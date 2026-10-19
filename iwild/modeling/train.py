@@ -30,9 +30,12 @@ from iwild.modeling.autoft_model import (
     set_seed,
     snapshot_initial_params,
 )
-from iwild.modeling.autoft_wandb import finish_wandb, init_wandb, wandb_log
-
-WANDB_PROJECT = "idl_f26_g30_autoft"
+from iwild.modeling.autoft_wandb import (
+    DEFAULT_WANDB_PROJECT,
+    finish_wandb,
+    init_wandb,
+    wandb_log,
+)
 
 app = typer.Typer()
 DEFAULT_ZEROSHOT_CKPT = ZEROSHOT_DIR / "clip_vitb16_iwildcam.pt"
@@ -114,7 +117,12 @@ def autoft(
     max_train_examples: Optional[int] = typer.Option(None, "--max-train-examples"),
     smoke: bool = typer.Option(False, "--smoke"),
     wandb: bool = typer.Option(False, "--wandb/--no-wandb"),
-    wandb_project: str = typer.Option(WANDB_PROJECT, "--wandb-project"),
+    wandb_project: Optional[str] = typer.Option(
+        None, "--wandb-project", help="Defaults to $WANDB_PROJECT or " + DEFAULT_WANDB_PROJECT
+    ),
+    wandb_entity: Optional[str] = typer.Option(
+        None, "--wandb-entity", help="Defaults to $WANDB_ENTITY (else your personal entity)"
+    ),
     wandb_run_name: Optional[str] = typer.Option(None, "--wandb-run-name"),
 ):
     """Full AutoFT pipeline: Optuna outer loop, then final fine-tune on the FT CSV."""
@@ -140,6 +148,7 @@ def autoft(
         wandb_project,
         wandb_run_name or f"autoft_{run_name}",
         config={"command": "autoft", "run_name": run_name, **asdict(params)},
+        entity=wandb_entity,
     )
     model = _load_or_build_zeroshot(model_ckpt, device)
     dataloaders = get_dataloaders(
@@ -189,7 +198,12 @@ def flyp(
     max_train_examples: Optional[int] = typer.Option(None, "--max-train-examples"),
     smoke: bool = typer.Option(False, "--smoke"),
     wandb: bool = typer.Option(False, "--wandb/--no-wandb"),
-    wandb_project: str = typer.Option(WANDB_PROJECT, "--wandb-project"),
+    wandb_project: Optional[str] = typer.Option(
+        None, "--wandb-project", help="Defaults to $WANDB_PROJECT or " + DEFAULT_WANDB_PROJECT
+    ),
+    wandb_entity: Optional[str] = typer.Option(
+        None, "--wandb-entity", help="Defaults to $WANDB_ENTITY (else your personal entity)"
+    ),
     wandb_run_name: Optional[str] = typer.Option(None, "--wandb-run-name"),
 ):
     """Plain FLYP fine-tune (ce=1, flyp=1, all other loss weights 0): lower baseline."""
@@ -214,6 +228,7 @@ def flyp(
         wandb_project,
         wandb_run_name or f"flyp_{run_name}",
         config={"command": "flyp", "run_name": run_name, **asdict(params)},
+        entity=wandb_entity,
     )
     model = _load_or_build_zeroshot(model_ckpt, device)
     dataloaders = get_dataloaders(
@@ -244,7 +259,12 @@ def eval_model(
     batch_size: int = typer.Option(64, "--batch-size"),
     num_workers: int = typer.Option(2, "--workers"),
     wandb: bool = typer.Option(False, "--wandb/--no-wandb"),
-    wandb_project: str = typer.Option(WANDB_PROJECT, "--wandb-project"),
+    wandb_project: Optional[str] = typer.Option(
+        None, "--wandb-project", help="Defaults to $WANDB_PROJECT or " + DEFAULT_WANDB_PROJECT
+    ),
+    wandb_entity: Optional[str] = typer.Option(
+        None, "--wandb-entity", help="Defaults to $WANDB_ENTITY (else your personal entity)"
+    ),
     wandb_run_name: Optional[str] = typer.Option(None, "--wandb-run-name"),
 ):
     """Evaluate a checkpoint on IDVal/IDTest/OODVal/OODTest; writes a JSON report."""
@@ -254,6 +274,7 @@ def eval_model(
         wandb_project,
         wandb_run_name or f"eval_{Path(ckpt).stem}",
         config={"command": "eval", "ckpt": str(ckpt)},
+        entity=wandb_entity,
     )
     model = load_classifier(ckpt, device=device)
     results = {}

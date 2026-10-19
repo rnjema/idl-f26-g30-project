@@ -3,11 +3,25 @@
 All wandb usage is lazy and guarded: if wandb is not installed or no run is active,
 ``wandb_log`` is a no-op and ``init_wandb`` returns None. The training pipeline therefore
 runs identically (loguru + JSON artifacts) with or without wandb.
+
+The wandb target resolves from (highest priority first): explicit argument, the
+``WANDB_PROJECT`` / ``WANDB_ENTITY`` environment variables (e.g. injected via Colab
+Secrets), then the project fallback ``idl_f26_g30_autoft`` and the personal default entity.
 """
 
+import os
 from typing import Optional
 
 import torch
+
+DEFAULT_WANDB_PROJECT = "idl_f26_g30_autoft"
+
+
+def resolve_wandb_target(project: Optional[str] = None, entity: Optional[str] = None):
+    """Resolve (project, entity): explicit arg > WANDB_PROJECT/WANDB_ENTITY env > defaults."""
+    project = project or os.environ.get("WANDB_PROJECT") or DEFAULT_WANDB_PROJECT
+    entity = entity or os.environ.get("WANDB_ENTITY") or None
+    return project, entity
 
 
 def wandb_available() -> bool:
@@ -20,9 +34,10 @@ def wandb_available() -> bool:
 
 def init_wandb(
     enabled: bool,
-    project: str,
-    run_name: str,
+    project: Optional[str] = None,
+    run_name: Optional[str] = None,
     config: Optional[dict] = None,
+    entity: Optional[str] = None,
 ):
     """Start a wandb run if enabled and installed; otherwise return None."""
     if not enabled:
@@ -31,7 +46,11 @@ def init_wandb(
         import wandb
     except ImportError:
         return None
-    run = wandb.init(project=project, name=run_name, config=config or {})
+    project, entity = resolve_wandb_target(project, entity)
+    kwargs = {"project": project, "name": run_name, "config": config or {}}
+    if entity:
+        kwargs["entity"] = entity
+    run = wandb.init(**kwargs)
     # torch tensors don't serialize into wandb config/logs directly
     if config:
         run.config.update(
