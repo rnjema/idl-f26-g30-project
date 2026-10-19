@@ -24,9 +24,9 @@ from iwild.config import (
 
 app = typer.Typer()
 
-# CodaLab bundle hosting WILDS iWildCam v2.0 (compressed ~12 GB).
-# The https endpoint's certificate is currently broken, so the plain-http endpoint is
-# tried first and the https fallback disables verification. Manual grab, if needed:
+# CodaLab bundle hosting WILDS iWildCam v2.0 (compressed ~12 GB). The http endpoint
+# redirects to https and the bundle's TLS certificate has expired, so every attempt
+# runs with certificate verification disabled. Manual grab, if needed:
 # https://worksheets.codalab.org/bundles/0x6313da2b204647e79a14b468131fcd64
 CODALAB_BUNDLE_ID = "0x6313da2b204647e79a14b468131fcd64"
 DOWNLOAD_URLS = (
@@ -90,32 +90,40 @@ def _verify_metadata(df: pd.DataFrame) -> None:
 
 
 def _download_and_extract(root_dir: Path) -> None:
-    """Stream-download the CodaLab tarball (certificate-less endpoint first) and extract it."""
+    """Stream-download the CodaLab tarball (certs disabled) and extract it into iwildcam_v2.0/.
+
+    The tarball is flat (``./train/...``, ``./metadata.csv``); the WILDS layout requires
+    everything under ``<root_dir>/iwildcam_v2.0/``, which is where we extract.
+    """
     import tarfile
+    import warnings
 
     import requests
     import urllib3
     from tqdm import tqdm
 
     root_dir = Path(root_dir)
-    root_dir.mkdir(parents=True, exist_ok=True)
+    dataset_dir = root_dir / "iwildcam_v2.0"
+    dataset_dir.mkdir(parents=True, exist_ok=True)
     tarball = root_dir / "iwildcam_v2.0.tar.gz"
 
     last_error = None
     for url in DOWNLOAD_URLS:
-        verify = url.startswith("https")
-        if verify:
-            logger.warning("Certificate-less endpoint failed; retrying without TLS verification.")
-            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        else:
-            logger.info(f"Downloading iWildCam v2.0 from {url} (~12 GB compressed)...")
+        logger.info(f"Downloading iWildCam v2.0 from {url} (~12 GB compressed)...")
         try:
-            with requests.get(url, stream=True, timeout=60, verify=verify) as response:
+            with warnings.catch_warnings():
+                # The bundle's TLS certificate has expired; all endpoints end up on https.
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                response = requests.get(url, stream=True, timeout=60, verify=False)
+            with response:
                 response.raise_for_status()
                 total = int(response.headers.get("Content-Length") or _COMPRESSED_SIZE)
-                with open(tarball, "wb") as handle, tqdm(
-                    total=total, unit="B", unit_scale=True, desc="iwildcam_v2.0.tar.gz"
-                ) as pbar:
+                with (
+                    open(tarball, "wb") as handle,
+                    tqdm(
+                        total=total, unit="B", unit_scale=True, desc="iwildcam_v2.0.tar.gz"
+                    ) as pbar,
+                ):
                     for chunk in response.iter_content(chunk_size=1024 * 1024):
                         handle.write(chunk)
                         pbar.update(len(chunk))
@@ -129,8 +137,26 @@ def _download_and_extract(root_dir: Path) -> None:
 
     logger.info("Extracting tarball (this takes a few minutes)...")
     with tarfile.open(tarball) as tar:
-        tar.extractall(path=root_dir)
+        try:
+            tar.extractall(path=dataset_dir, filter="data")  # Python >= 3.12
+        except TypeError:
+            tar.extractall(path=dataset_dir)
     tarball.unlink()
+
+
+def _repair_flat_extraction(root_dir: Path, dataset_dir: Path) -> None:
+    """Move a previous flat extraction (train/val/test/metadata.csv loose in root_dir)."""
+    import shutil
+
+    stray = [
+        c for c in root_dir.iterdir() if c.name not in (dataset_dir.name, "iwildcam_v2.0.tar.gz")
+    ]
+    logger.warning(
+        f"Found a flat extraction in {root_dir}; moving {len(stray)} entries into {dataset_dir}"
+    )
+    dataset_dir.mkdir(exist_ok=True)
+    for child in stray:
+        shutil.move(str(child), str(dataset_dir / child.name))
 
 
 @app.command()
@@ -143,15 +169,18 @@ def download(
     if (dataset_dir / "metadata.csv").exists():
         logger.info(f"{dataset_dir} already exists; skipping download.")
     else:
-        try:
-            _download_and_extract(root_dir)
-        except Exception as exc:
-            logger.error(
-                f"Download failed: {exc}. Grab the bundle manually at "
-                f"https://worksheets.codalab.org/bundles/{CODALAB_BUNDLE_ID} and place the "
-                f"extracted `iwildcam_v2.0/` directory under {root_dir}."
-            )
-            raise typer.Exit(code=1)
+        if (root_dir / "metadata.csv").exists():
+            _repair_flat_extraction(root_dir, dataset_dir)
+        else:
+            try:
+                _download_and_extract(root_dir)
+            except Exception as exc:
+                logger.error(
+                    f"Download failed: {exc}. Grab the bundle manually at "
+                    f"https://worksheets.codalab.org/bundles/{CODALAB_BUNDLE_ID} and place the "
+                    f"extracted contents under {dataset_dir}."
+                )
+                raise typer.Exit(code=1)
 
     if not (dataset_dir / "metadata.csv").exists():
         logger.error(
