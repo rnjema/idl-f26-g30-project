@@ -49,10 +49,17 @@ An attempt at scaling beyond the benchmark heights on the iWILD Cam Challenge
     │
     ├── features.py             <- Code to create features for modeling
     │
-    ├── modeling                
-    │   ├── __init__.py 
-    │   ├── predict.py          <- Code to run model inference with trained models          
-    │   └── train.py            <- Code to train models
+    ├── modeling
+    │   ├── __init__.py
+    │   ├── autoft.py             <- AutoFT Optuna outer loop + fine-tuning routines
+    │   ├── autoft_model.py       <- CLIP wrapper, zero-shot head, checkpoint IO
+    │   ├── autoft_data.py        <- WILDS split datasets, FLYP CSV dataset, OOD-HP subset
+    │   ├── autoft_losses.py      <- AutoFT's 9 learned loss terms
+    │   ├── autoft_wandb.py       <- Optional Weights & Biases logging (no-op without a key)
+    │   ├── autoft_hparams_iwildcam.json <- Pre-learned loss weights/lr/wd (AutoFT paper)
+    │   ├── iwildcam_metadata/    <- y -> species mapping (labels.csv)
+    │   ├── predict.py            <- Code to run model inference with trained models
+    │   └── train.py              <- CLI: zeroshot / autoft / flyp / eval / wisefmt
     │
     └── plots.py                <- Code to create visualizations
 ```

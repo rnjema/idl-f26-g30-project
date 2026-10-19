@@ -1,0 +1,22 @@
+# Training dependencies for the AutoFT baseline (installed on top of torch/torchvision,
+# which come from the PyTorch cu128 index — see `make requirements-train`).
+open-clip-torch
+wilds==2.0.0
+optuna>=3.3
+numpy<2
+pandas
+pillow
+scikit-learn
+matplotlib
+tqdm
+typer
+loguru
+python-dotenv
+
+# Notebook tooling (the .venv replaces the base conda env, which carried jupyterlab)
+jupyterlab
+ipykernel
+
+# Optional metrics tracking (used when --wandb is passed; the code degrades
+# gracefully to plain loguru + JSON when wandb is absent)
+wandb

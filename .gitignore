@@ -1,6 +1,10 @@
 # Data
 /data/
 
+# Models and generated reports (large artifacts; .gitkeep placeholders stay tracked)
+/models/
+/reports/
+
 # Mac OS-specific storage files
 .DS_Store
 

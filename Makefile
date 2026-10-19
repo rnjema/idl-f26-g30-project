@@ -15,8 +15,14 @@ PYTHON_INTERPRETER = python
 .PHONY: requirements
 requirements:
 	conda env update --name $(PROJECT_NAME) --file environment.yml --prune
-	
 
+## Install training dependencies (torch cu128 + AutoFT requirements) into the active env.
+## On this workstation (no conda) the canonical env is the project .venv.
+.PHONY: requirements-train
+requirements-train:
+	pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+	pip install -r requirements-train.txt
+	
 
 
 ## Delete all compiled Python files
@@ -47,10 +53,10 @@ format:
 #################################################################################
 
 
-## Make Dataset
+## Download + verify the iWildCam dataset
 .PHONY: data
 data: requirements
-	$(PYTHON_INTERPRETER) iwild/dataset.py
+	$(PYTHON_INTERPRETER) iwild/dataset.py download
 
 
 #################################################################################
