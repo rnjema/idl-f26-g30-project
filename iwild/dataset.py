@@ -1,7 +1,7 @@
 """iWildCam (WILDS) dataset utilities.
 
 Commands:
-- download: fetch iwildcam_v2.0 via the `wilds` package and verify split/leakage invariants.
+- download: fetch iwildcam_v2.0 from the CodaLab bundle and verify split/leakage invariants.
 - make-ft-csv: build the FLYP/AutoFT fine-tuning CSV (one row per image x text prompt).
 - location-split: seeded 80/20 camera-trap split of the official train split (for the selector
   lane; the AutoFT baseline trains on the full official train split).
@@ -23,6 +23,17 @@ from iwild.config import (
 )
 
 app = typer.Typer()
+
+# CodaLab bundle hosting WILDS iWildCam v2.0 (compressed ~12 GB).
+# The https endpoint's certificate is currently broken, so the plain-http endpoint is
+# tried first and the https fallback disables verification. Manual grab, if needed:
+# https://worksheets.codalab.org/bundles/0x6313da2b204647e79a14b468131fcd64
+CODALAB_BUNDLE_ID = "0x6313da2b204647e79a14b468131fcd64"
+DOWNLOAD_URLS = (
+    f"http://worksheets.codalab.org/rest/bundles/{CODALAB_BUNDLE_ID}/contents/blob/",
+    f"https://worksheets.codalab.org/rest/bundles/{CODALAB_BUNDLE_ID}/contents/blob/",
+)
+_COMPRESSED_SIZE = 11_957_420_032  # bytes, per the WILDS 2.0 dataset definition
 
 # WILDS iWildCam v2.0 verified facts (WILDS paper App. E.1 / WILDS 2.0)
 EXPECTED_SPLIT_SIZES = {
@@ -78,29 +89,79 @@ def _verify_metadata(df: pd.DataFrame) -> None:
     )
 
 
+def _download_and_extract(root_dir: Path) -> None:
+    """Stream-download the CodaLab tarball (certificate-less endpoint first) and extract it."""
+    import tarfile
+
+    import requests
+    import urllib3
+    from tqdm import tqdm
+
+    root_dir = Path(root_dir)
+    root_dir.mkdir(parents=True, exist_ok=True)
+    tarball = root_dir / "iwildcam_v2.0.tar.gz"
+
+    last_error = None
+    for url in DOWNLOAD_URLS:
+        verify = url.startswith("https")
+        if verify:
+            logger.warning("Certificate-less endpoint failed; retrying without TLS verification.")
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        else:
+            logger.info(f"Downloading iWildCam v2.0 from {url} (~12 GB compressed)...")
+        try:
+            with requests.get(url, stream=True, timeout=60, verify=verify) as response:
+                response.raise_for_status()
+                total = int(response.headers.get("Content-Length") or _COMPRESSED_SIZE)
+                with open(tarball, "wb") as handle, tqdm(
+                    total=total, unit="B", unit_scale=True, desc="iwildcam_v2.0.tar.gz"
+                ) as pbar:
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        handle.write(chunk)
+                        pbar.update(len(chunk))
+            break
+        except requests.RequestException as exc:
+            last_error = exc
+            logger.warning(f"Download from {url} failed: {exc}")
+            tarball.unlink(missing_ok=True)
+    else:
+        raise RuntimeError(f"All download endpoints failed. Last error: {last_error}")
+
+    logger.info("Extracting tarball (this takes a few minutes)...")
+    with tarfile.open(tarball) as tar:
+        tar.extractall(path=root_dir)
+    tarball.unlink()
+
+
 @app.command()
 def download(
     root_dir: Path = RAW_DATA_DIR,
 ):
-    """Download iWildCam v2.0 through the wilds package and verify split/leakage invariants."""
-    try:
-        from wilds import get_dataset
-    except ModuleNotFoundError:
-        logger.error("The `wilds` package is not installed. Run `make requirements-train` first.")
-        raise typer.Exit(code=1)
+    """Download iWildCam v2.0 from the CodaLab bundle and verify split/leakage invariants."""
+    root_dir = Path(root_dir)
+    dataset_dir = root_dir / "iwildcam_v2.0"
+    if (dataset_dir / "metadata.csv").exists():
+        logger.info(f"{dataset_dir} already exists; skipping download.")
+    else:
+        try:
+            _download_and_extract(root_dir)
+        except Exception as exc:
+            logger.error(
+                f"Download failed: {exc}. Grab the bundle manually at "
+                f"https://worksheets.codalab.org/bundles/{CODALAB_BUNDLE_ID} and place the "
+                f"extracted `iwildcam_v2.0/` directory under {root_dir}."
+            )
+            raise typer.Exit(code=1)
 
-    logger.info(f"Downloading iWildCam v2.0 to {root_dir} (~12 GB compressed)...")
-    try:
-        get_dataset(dataset="iwildcam", root_dir=str(root_dir), download=True)
-    except Exception as exc:
+    if not (dataset_dir / "metadata.csv").exists():
         logger.error(
-            f"Download failed: {exc}. If the WILDS/CodaLab mirror is unavailable, download "
-            "iwildcam_v2.0 manually (see https://wilds.stanford.edu/datasets/#iwildcam) and place "
-            f"the extracted `iwildcam_v2.0/` directory under {root_dir}."
+            f"{dataset_dir}/metadata.csv not found after download. Extract the bundle manually "
+            f"(https://worksheets.codalab.org/bundles/{CODALAB_BUNDLE_ID}) so that "
+            f"{dataset_dir}/metadata.csv exists, then re-run `verify`."
         )
         raise typer.Exit(code=1)
 
-    _verify_metadata(_load_metadata())
+    _verify_metadata(pd.read_csv(dataset_dir / "metadata.csv"))
 
 
 @app.command()
