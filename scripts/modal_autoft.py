@@ -95,10 +95,19 @@ image = (
         extra_options="--index-url https://download.pytorch.org/whl/cu128",
     )
     .pip_install_from_requirements("requirements-modal.txt")
-    # add_local_python_source must be the LAST build step (Modal layers local files at
-    # container startup); the labels.csv package-data check therefore runs at job start
-    # in _check_package_data instead of as a build step.
+    # add_local_python_source ships only *.py (NON_PYTHON_FILES ignore), so the package
+    # data is layered explicitly. All add_local_* calls must stay last in the build;
+    # files are layered at container startup, keeping the image cache valid across
+    # local edits. _check_package_data verifies both at job start.
     .add_local_python_source("iwild")
+    .add_local_dir(
+        "iwild/modeling/iwildcam_metadata",
+        "/root/iwild/modeling/iwildcam_metadata",
+    )
+    .add_local_file(
+        "iwild/modeling/autoft_hparams_iwildcam.json",
+        "/root/iwild/modeling/autoft_hparams_iwildcam.json",
+    )
 )
 
 ENV = {
@@ -143,8 +152,13 @@ def _check_package_data() -> None:
 
     import iwild
 
-    labels = pathlib.Path(iwild.__file__).parent / "modeling/iwildcam_metadata/labels.csv"
-    assert labels.exists(), f"missing package data: {labels}"
+    pkg = pathlib.Path(iwild.__file__).parent
+    for rel in (
+        "modeling/iwildcam_metadata/labels.csv",
+        "modeling/autoft_hparams_iwildcam.json",
+    ):
+        path = pkg / rel
+        assert path.exists(), f"missing package data: {path}"
 
 
 def _run_cli(args: list[str]) -> None:
