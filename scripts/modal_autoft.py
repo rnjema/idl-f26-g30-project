@@ -188,6 +188,7 @@ def download_data() -> None:
     import iwild.dataset as dataset_cli
 
     _check_package_data()
+    _start_periodic_commits()  # a 12 GB download should survive a mid-flight preemption
     for args in (["download"], ["make-ft-csv"], ["location-split", "--seed", "42"]):
         cmd = [sys.executable, dataset_cli.__file__] + args
         print("RUN:", " ".join(cmd), flush=True)
@@ -294,6 +295,20 @@ def eval_model(ckpt: str, batch_size: int = 128) -> None:
     """Evaluate a checkpoint from the volume on all four WILDS splits (logs to W&B)."""
     _run_cli(["eval", "--ckpt", ckpt, "--batch-size", str(batch_size), "--wandb"])
     ckpt_volume.commit()
+
+
+@app.function(image=image, volumes=VOLUMES, env=ENV, timeout=60 * 30)
+def verify_data() -> None:
+    """Re-run the split-size / class-count / location-leakage assertions on the volume."""
+    import subprocess
+    import sys
+
+    import iwild.dataset as dataset_cli
+
+    _check_package_data()
+    cmd = [sys.executable, dataset_cli.__file__, "verify"]
+    print("RUN:", " ".join(cmd), flush=True)
+    subprocess.run(cmd, check=True)
 
 
 @app.function(image=image, volumes=VOLUMES, env=ENV, timeout=60 * 10)
