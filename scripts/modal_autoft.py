@@ -86,7 +86,15 @@ ckpt_volume = modal.Volume.from_name(
 
 image = (
     modal.Image.debian_slim(python_version="3.12")
-    .pip_install_from_requirements("requirements-train.txt")
+    # Pinned cu128 wheels from the PyTorch index — the same torch/torchvision as the
+    # workstation .venv. (Unpinned PyPI torch currently resolves to CUDA-13 wheels,
+    # which we have not validated.)
+    .pip_install(
+        "torch==2.11.0",
+        "torchvision==0.26.0",
+        extra_options="--index-url https://download.pytorch.org/whl/cu128",
+    )
+    .pip_install_from_requirements("requirements-modal.txt")
     .add_local_python_source("iwild")
     .run_commands(
         "python -c \"import pathlib, iwild; "

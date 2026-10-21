@@ -1,0 +1,18 @@
+# Container dependencies for the Modal image (scripts/modal_autoft.py).
+# torch/torchvision are NOT listed here: the image builder installs the pinned cu128
+# wheels from the PyTorch index first (see pip_install(extra_options=...) in the app),
+# matching the workstation/Colab stack exactly.
+open-clip-torch
+wilds==2.0.0
+optuna
+numpy<2
+pandas
+pillow
+scikit-learn
+matplotlib
+tqdm
+typer
+loguru
+python-dotenv
+wandb
+modal
