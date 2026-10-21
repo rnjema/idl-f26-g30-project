@@ -257,7 +257,10 @@ def location_split(
     if not 0.0 < frac_a < 1.0:
         raise typer.BadParameter("frac_a must be in (0, 1)")
     df = _load_metadata()
-    train_traps = sorted(df.loc[df["split"] == "train", "location_remapped"].unique())
+    # cast to Python ints: pandas gives numpy int64, which json.dumps rejects
+    train_traps = sorted(
+        int(t) for t in df.loc[df["split"] == "train", "location_remapped"].unique()
+    )
     assert len(train_traps) == EXPECTED_TRAP_COUNTS["train"]
 
     rng = random.Random(seed)
