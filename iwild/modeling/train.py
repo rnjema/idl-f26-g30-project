@@ -67,6 +67,7 @@ def _build_params(
     clip_gradient: bool,
     max_train_examples: Optional[int],
     smoke: bool,
+    workers: int = 2,
 ) -> AutoFTParams:
     if smoke:
         hopt_evals, inner_steps, batch_size = 3, 5, 16
@@ -84,6 +85,7 @@ def _build_params(
         losses=losses,
         clip_gradient=clip_gradient,
         max_train_examples=max_train_examples,
+        workers=workers,
     )
 
 
@@ -122,6 +124,7 @@ def autoft(
     no_init_hparams: bool = typer.Option(False, "--no-init-hparams"),
     max_train_examples: Optional[int] = typer.Option(None, "--max-train-examples"),
     smoke: bool = typer.Option(False, "--smoke"),
+    workers: int = typer.Option(2, "--workers", help="DataLoader workers (raise to ~12 on A100)"),
     stage: str = typer.Option(
         "both", "--stage", help="hopt = search only | ft = fine-tune only | both = full pipeline"
     ),
@@ -162,6 +165,7 @@ def autoft(
         clip_gradient,
         max_train_examples,
         smoke,
+        workers,
     )
     model = _load_or_build_zeroshot(model_ckpt, device)
     arch = model.image_encoder.arch
@@ -278,6 +282,7 @@ def flyp(
     ft_epochs: int = typer.Option(20, "--ft-epochs"),
     max_train_examples: Optional[int] = typer.Option(None, "--max-train-examples"),
     smoke: bool = typer.Option(False, "--smoke"),
+    workers: int = typer.Option(2, "--workers", help="DataLoader workers (raise to ~12 on A100)"),
     resume: bool = typer.Option(
         False,
         "--resume/--no-resume",
@@ -308,6 +313,7 @@ def flyp(
         True,
         max_train_examples,
         smoke,
+        workers,
     )
     model = _load_or_build_zeroshot(model_ckpt, device)
     arch = model.image_encoder.arch

@@ -227,6 +227,7 @@ def autoft_stage(
     hparams_from_paper: bool = False,
     resume: bool = True,
     smoke: bool = False,
+    workers: int = 12,
 ) -> None:
     """Run one AutoFT stage (hopt / ft / both) with checkpoints on the volume."""
     _start_periodic_commits()
@@ -253,6 +254,7 @@ def autoft_stage(
         "--batch-size", str(batch_size),
         "--accumulation-steps", str(accumulation_steps),
         "--ft-epochs", str(ft_epochs),
+        "--workers", str(workers),
         "--wandb",
     ]
     if model:
@@ -281,6 +283,7 @@ def flyp_stage(
     model: str | None = None,
     resume: bool = True,
     smoke: bool = False,
+    workers: int = 12,
 ) -> None:
     """Run the FLYP lower-baseline fine-tune, resumable, checkpoints on the volume."""
     _start_periodic_commits()
@@ -291,6 +294,7 @@ def flyp_stage(
         "--batch-size", str(batch_size),
         "--accumulation-steps", str(accumulation_steps),
         "--ft-epochs", str(ft_epochs),
+        "--workers", str(workers),
         "--wandb",
     ]
     if model:
@@ -303,7 +307,7 @@ def flyp_stage(
     ckpt_volume.commit()
 
 
-@app.function(image=image, volumes=VOLUMES, env=ENV, secrets=SECRETS, timeout=DAY)
+@app.function(image=image, gpu=_gpu(), volumes=VOLUMES, env=ENV, secrets=SECRETS, timeout=DAY)
 def eval_model(ckpt: str, batch_size: int = 128) -> None:
     """Evaluate a checkpoint from the volume on all four WILDS splits (logs to W&B)."""
     _run_cli(["eval", "--ckpt", ckpt, "--batch-size", str(batch_size), "--wandb"])

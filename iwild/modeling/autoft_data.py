@@ -100,7 +100,12 @@ def make_ood_hp_subset(
 
 
 class CsvDataset(Dataset):
-    """FLYP image-caption dataset over a tab-separated CSV (filepath/title/label)."""
+    """FLYP image-caption dataset over a tab-separated CSV (filepath/title/label).
+
+    Captions are BPE-tokenized once per unique string at construction (there are only
+    ~hundreds of unique prompts) instead of once per row per epoch - tokenization in
+    __getitem__ was a major CPU bottleneck that starved the GPU.
+    """
 
     def __init__(
         self,
@@ -127,16 +132,20 @@ class CsvDataset(Dataset):
         self.labels = list(map(int, df[label_key].tolist()))
         self.transforms = transforms
 
+        from open_clip import tokenize
+
+        unique_captions = list(dict.fromkeys(self.captions))
+        cache = {
+            cap: tokenize([cap])[0] for cap in tqdm(unique_captions, desc="Tokenizing captions")
+        }
+        self.tokens = [cache[cap] for cap in self.captions]
+
     def __len__(self):
         return len(self.captions)
 
     def __getitem__(self, idx):
-        from open_clip import tokenize
-
         images = self.transforms(Image.open(str(self.images[idx])))
-        texts = tokenize([str(self.captions[idx])])[0]
-        label = self.labels[idx]
-        return images, label, texts
+        return images, self.labels[idx], self.tokens[idx]
 
 
 def get_dataloaders(
@@ -151,6 +160,9 @@ def get_dataloaders(
 ) -> dict:
     """Build the FT, ID-val and class-balanced OOD-HP dataloaders."""
     kwargs = {"num_workers": num_workers, "pin_memory": torch.cuda.is_available()}
+    if num_workers > 0:
+        # A100-class GPUs are dataloader-starved without these
+        kwargs.update(persistent_workers=True, prefetch_factor=4)
 
     ft_dataset = CsvDataset(ft_csv_path(), ft_preprocess, max_examples=max_train_examples)
     ft_loader = DataLoader(
