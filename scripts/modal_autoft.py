@@ -16,7 +16,16 @@ One-time setup:
     modal secret create wandb \\
         WANDB_API_KEY=... WANDB_PROJECT=... WANDB_ENTITY=...
 
-Run from the repo root (the iwild package is baked into the image from your checkout):
+Environments (isolated dev/prod worlds): every resource below - the two volumes, the
+'wandb' secret, and the data it downloads - is scoped to a Modal environment, default
+'main'. To get an isolated 'dev' world:
+
+    modal environment create dev
+    modal secret create --environment dev wandb \\
+        WANDB_API_KEY=... WANDB_PROJECT=... WANDB_ENTITY=...
+
+Run from the repo root (the iwild package is baked into the image from your checkout),
+always with MODAL_ENVIRONMENT matching the --environment flag:
 
     # 1) download + verify the dataset onto the volume (~1 hour, CPU is fine)
     modal run scripts/modal_autoft.py::download_data
@@ -36,6 +45,9 @@ Run from the repo root (the iwild package is baked into the image from your chec
     # FLYP baseline
     modal run --gpu A100 scripts/modal_autoft.py::flyp_stage --run-name flyp_baseline
 
+('main' environment shown; for 'dev' prefix every command with
+MODAL_ENVIRONMENT=dev and add --environment dev to modal run.)
+
 GPU is chosen with the modal run `--gpu` flag (A100 / A100-80GB / L4 / T4).
 
 Detached mode: every job runs remotely, so it survives closing the laptop. To get the
@@ -48,6 +60,7 @@ Volume contents can be inspected from any job, e.g.:
 `modal run scripts/modal_autoft.py::ls_volumes`.
 """
 
+import os
 import threading
 import time
 
@@ -55,12 +68,21 @@ import modal
 
 app = modal.App("idl-f26-g30-autoft")
 
+# All Modal resources (volumes, the 'wandb' secret) are scoped to this environment.
+# Modal sets MODAL_ENVIRONMENT inside containers; set it in your shell too so the
+# local launcher and the remote job agree (see module docstring).
+ENVIRONMENT = os.environ.get("MODAL_ENVIRONMENT", "main")
+
 DATA_VOLUME_NAME = "iwildcam-data"
 CKPT_VOLUME_NAME = "iwildcam-ckpts"
 COMMIT_INTERVAL_S = 600
 
-data_volume = modal.Volume.from_name(DATA_VOLUME_NAME, create_if_missing=True)
-ckpt_volume = modal.Volume.from_name(CKPT_VOLUME_NAME, create_if_missing=True)
+data_volume = modal.Volume.from_name(
+    DATA_VOLUME_NAME, create_if_missing=True, environment_name=ENVIRONMENT
+)
+ckpt_volume = modal.Volume.from_name(
+    CKPT_VOLUME_NAME, create_if_missing=True, environment_name=ENVIRONMENT
+)
 
 image = (
     modal.Image.debian_slim(python_version="3.12")
@@ -85,7 +107,7 @@ VOLUMES = {
     "/ckpt": ckpt_volume,
 }
 
-SECRETS = [modal.Secret.from_name("wandb")]
+SECRETS = [modal.Secret.from_name("wandb", environment_name=ENVIRONMENT)]
 
 DAY = 24 * 60 * 60  # modal function timeout cap
 
@@ -101,7 +123,7 @@ def _start_periodic_commits() -> None:
             time.sleep(COMMIT_INTERVAL_S)
             for name in (DATA_VOLUME_NAME, CKPT_VOLUME_NAME):
                 try:
-                    modal.Volume.from_name(name).commit()
+                    modal.Volume.from_name(name, environment_name=ENVIRONMENT).commit()
                     print(f"[volume-commit] {name} committed", flush=True)
                 except Exception as exc:  # noqa: BLE001
                     print(f"[volume-commit] {name} skipped: {exc}", flush=True)
