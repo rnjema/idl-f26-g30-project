@@ -83,7 +83,7 @@ pip install modal && modal setup
 modal secret create wandb WANDB_API_KEY=... WANDB_PROJECT=... WANDB_ENTITY=...
 # optional isolated world: modal environment create dev &&
 #   modal secret create --environment dev wandb ... (then prefix runs with
-#   MODAL_ENVIRONMENT=dev and add --environment dev)
+#   MODAL_ENVIRONMENT=dev — no --environment flag on `modal run`)
 modal run scripts/modal_autoft.py::download_data                      # once, CPU
 modal run --gpu A100 scripts/modal_autoft.py::autoft_stage --stage hopt --run-name autoft_vitb16_official
 modal run --gpu A100 scripts/modal_autoft.py::autoft_stage --stage ft   --run-name autoft_vitb16_official

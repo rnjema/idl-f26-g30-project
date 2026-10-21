@@ -25,7 +25,8 @@ Environments (isolated dev/prod worlds): every resource below - the two volumes,
         WANDB_API_KEY=... WANDB_PROJECT=... WANDB_ENTITY=...
 
 Run from the repo root (the iwild package is baked into the image from your checkout),
-always with MODAL_ENVIRONMENT matching the --environment flag:
+with MODAL_ENVIRONMENT selecting the target environment (there is no --environment flag
+on `modal run`; `modal deploy`/`modal secret create` do take one):
 
     # 1) download + verify the dataset onto the volume (~1 hour, CPU is fine)
     modal run scripts/modal_autoft.py::download_data
@@ -45,8 +46,9 @@ always with MODAL_ENVIRONMENT matching the --environment flag:
     # FLYP baseline
     modal run --gpu A100 scripts/modal_autoft.py::flyp_stage --run-name flyp_baseline
 
-('main' environment shown; for 'dev' prefix every command with
-MODAL_ENVIRONMENT=dev and add --environment dev to modal run.)
+('main' environment shown; for 'dev' prefix every command with MODAL_ENVIRONMENT=dev —
+there is no --environment flag on `modal run`; it exists on `modal deploy` and
+`modal secret create`.)
 
 GPU is chosen with the modal run `--gpu` flag (A100 / A100-80GB / L4 / T4).
 
