@@ -75,6 +75,14 @@ app = modal.App("idl-f26-g30-autoft")
 # local launcher and the remote job agree (see module docstring).
 ENVIRONMENT = os.environ.get("MODAL_ENVIRONMENT", "main")
 
+# GPU for the training/eval entrypoints: chosen via IWILD_GPU because `modal run` in
+# this SDK version has no --gpu flag and @app.function takes a plain string.
+# Values: A100 (default) | A100-80GB | L4 | T4 | H100 | "" (CPU). Overridable per launch:
+#   IWILD_GPU=L4 MODAL_ENVIRONMENT=idlf26 modal run --detach scripts/modal_autoft.py::autoft_stage ...
+def _gpu() -> str | None:
+    return os.environ.get("IWILD_GPU", "A100").strip() or None
+
+
 DATA_VOLUME_NAME = "iwildcam-data"
 CKPT_VOLUME_NAME = "iwildcam-ckpts"
 COMMIT_INTERVAL_S = 600
@@ -177,6 +185,7 @@ def _run_cli(args: list[str]) -> None:
 
 @app.function(
     image=image,
+    gpu=_gpu(),
     volumes=VOLUMES,
     env=ENV,
     secrets=SECRETS,
@@ -200,6 +209,7 @@ def download_data() -> None:
 
 @app.function(
     image=image,
+    gpu=_gpu(),
     volumes=VOLUMES,
     env=ENV,
     secrets=SECRETS,
@@ -257,6 +267,7 @@ def autoft_stage(
 
 @app.function(
     image=image,
+    gpu=_gpu(),
     volumes=VOLUMES,
     env=ENV,
     secrets=SECRETS,

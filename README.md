@@ -82,15 +82,17 @@ with the entry's paper/leaderboard config in `wandb.run.config.submission`.
 pip install modal && modal setup
 modal secret create wandb WANDB_API_KEY=... WANDB_PROJECT=... WANDB_ENTITY=...
 # optional isolated world: modal environment create dev &&
-#   modal secret create --environment dev wandb ... (then prefix runs with
-#   MODAL_ENVIRONMENT=dev — no --environment flag on `modal run`)
+#   modal secret create --environment dev wandb ... (then select it with
+#   `modal run -e dev` or MODAL_ENVIRONMENT=dev)
 modal run scripts/modal_autoft.py::download_data                      # once, CPU
-modal run --gpu A100 scripts/modal_autoft.py::autoft_stage --stage hopt --run-name autoft_vitb16_official
-modal run --gpu A100 scripts/modal_autoft.py::autoft_stage --stage ft   --run-name autoft_vitb16_official
+IWILD_GPU=A100 modal run --detach scripts/modal_autoft.py::autoft_stage --stage hopt --run-name autoft_vitb16_official
+IWILD_GPU=A100 modal run --detach scripts/modal_autoft.py::autoft_stage --stage ft   --run-name autoft_vitb16_official
 ```
 
-Add `--detach` to any of these to release the terminal instantly (the job runs remotely;
-watch it live in W&B or via `modal logs -f <job_id>`). Jobs are capped at 24 h — when a
+Add `--detach` to release the terminal instantly (the job runs remotely;
+watch it live in W&B or via `modal container list` / `modal container logs <id>`).
+GPU type is the `IWILD_GPU` env var (A100 default; A100-80GB / L4 / T4 valid) —
+`modal run` has no `--gpu` flag. Jobs are capped at 24 h — when a
 stage hits the cap, re-launch the same command and `--resume` continues from the last
 committed epoch.
 
