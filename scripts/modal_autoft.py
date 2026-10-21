@@ -37,6 +37,13 @@ Run from the repo root (the iwild package is baked into the image from your chec
     modal run --gpu A100 scripts/modal_autoft.py::flyp_stage --run-name flyp_baseline
 
 GPU is chosen with the modal run `--gpu` flag (A100 / A100-80GB / L4 / T4).
+
+Detached mode: every job runs remotely, so it survives closing the laptop. To get the
+terminal back immediately, launch with `--detach` (prints a job ID and exits); watch
+progress live in W&B, or re-attach logs with `modal logs -f <job_id>`. Note the 24 h
+per-job cap still applies - when a stage hits it, re-launch the same command and
+`--resume` continues from the last committed epoch.
+
 Volume contents can be inspected from any job, e.g.:
 `modal run scripts/modal_autoft.py::ls_volumes`.
 """

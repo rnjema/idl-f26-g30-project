@@ -86,6 +86,11 @@ modal run --gpu A100 scripts/modal_autoft.py::autoft_stage --stage hopt --run-na
 modal run --gpu A100 scripts/modal_autoft.py::autoft_stage --stage ft   --run-name autoft_vitb16_official
 ```
 
+Add `--detach` to any of these to release the terminal instantly (the job runs remotely;
+watch it live in W&B or via `modal logs -f <job_id>`). Jobs are capped at 24 h — when a
+stage hits the cap, re-launch the same command and `--resume` continues from the last
+committed epoch.
+
 Paths are steered by `IWILD_DATA_DIR` / `IWILD_MODELS_DIR` / `IWILD_REPORTS_DIR`
 (see `iwild/config.py`), which the app points at the mounted volumes.
 
