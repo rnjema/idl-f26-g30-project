@@ -38,6 +38,9 @@ def init_wandb(
     run_name: Optional[str] = None,
     config: Optional[dict] = None,
     entity: Optional[str] = None,
+    group: Optional[str] = None,
+    tags: Optional[list] = None,
+    notes: Optional[str] = None,
 ):
     """Start a wandb run if enabled and installed; otherwise return None."""
     if not enabled:
@@ -47,7 +50,14 @@ def init_wandb(
     except ImportError:
         return None
     project, entity = resolve_wandb_target(project, entity)
-    kwargs = {"project": project, "name": run_name, "config": config or {}}
+    kwargs = {
+        "project": project,
+        "name": run_name,
+        "config": config or {},
+        "group": group,
+        "tags": tags or [],
+        "notes": notes,
+    }
     if entity:
         kwargs["entity"] = entity
     run = wandb.init(**kwargs)
@@ -58,6 +68,18 @@ def init_wandb(
             allow_val_change=True,
         )
     return run
+
+
+def wandb_summary(metrics: dict) -> None:
+    """Write key=value pairs to the active run's summary table (sticky final metrics)."""
+    try:
+        import wandb
+    except ImportError:
+        return
+    if wandb.run is None:
+        return
+    for key, value in metrics.items():
+        wandb.run.summary[key] = value.item() if isinstance(value, torch.Tensor) else value
 
 
 def wandb_log(metrics: dict, step: Optional[int] = None) -> None:

@@ -88,13 +88,18 @@ def _build_params(
 
 @app.command()
 def zeroshot(
+    arch: str = typer.Option(
+        "ViT-B-16", "--arch", help="open_clip architecture, e.g. ViT-B-16 or ViT-L-14-336"
+    ),
+    pretrained: str = typer.Option("openai", "--pretrained"),
     out_dir: Path = typer.Option(ZEROSHOT_DIR, "--out-dir"),
-    name: str = typer.Option("clip_vitb16_iwildcam", "--name"),
+    name: Optional[str] = typer.Option(None, "--name"),
 ):
     """Build the zero-shot CLIP model and save it to ZEROSHOT_DIR."""
     device = get_device()
-    model = build_zeroshot_model(device=device)
-    save_classifier(model, Path(out_dir) / f"{name}.pt")
+    ckpt_name = name or f"clip_{arch.lower().replace('-', '')}_iwildcam"
+    model = build_zeroshot_model(arch=arch, pretrained=pretrained, device=device)
+    save_classifier(model, Path(out_dir) / f"{ckpt_name}.pt")
 
 
 @app.command()
@@ -116,6 +121,14 @@ def autoft(
     no_init_hparams: bool = typer.Option(False, "--no-init-hparams"),
     max_train_examples: Optional[int] = typer.Option(None, "--max-train-examples"),
     smoke: bool = typer.Option(False, "--smoke"),
+    stage: str = typer.Option(
+        "both", "--stage", help="hopt = search only | ft = fine-tune only | both = full pipeline"
+    ),
+    resume: bool = typer.Option(
+        False,
+        "--resume/--no-resume",
+        help="ft stage: continue from the last epoch checkpoint instead of restarting",
+    ),
     wandb: bool = typer.Option(False, "--wandb/--no-wandb"),
     wandb_project: Optional[str] = typer.Option(
         None, "--wandb-project", help="Defaults to $WANDB_PROJECT or " + DEFAULT_WANDB_PROJECT
@@ -125,7 +138,13 @@ def autoft(
     ),
     wandb_run_name: Optional[str] = typer.Option(None, "--wandb-run-name"),
 ):
-    """Full AutoFT pipeline: Optuna outer loop, then final fine-tune on the FT CSV."""
+    """Full AutoFT pipeline: Optuna outer loop, then final fine-tune on the FT CSV.
+
+    Use --stage hopt / --stage ft to split the two across sessions (Colab runtime
+    limits); the ft stage resumes with --resume if a previous fine-tune disconnected.
+    """
+    if stage not in ("hopt", "ft", "both"):
+        raise typer.BadParameter("--stage must be one of: hopt, ft, both")
     device = get_device()
     loss_list = tuple(sorted(losses)) if losses else tuple(ALL_LOSSES)
     params = _build_params(
@@ -143,14 +162,33 @@ def autoft(
         max_train_examples,
         smoke,
     )
+    model = _load_or_build_zeroshot(model_ckpt, device)
+    arch = model.image_encoder.arch
     run = init_wandb(
         wandb,
         wandb_project,
-        wandb_run_name or f"autoft_{run_name}",
-        config={"command": "autoft", "run_name": run_name, **asdict(params)},
+        wandb_run_name
+        or f"autoft-{arch}-hopt{params.hopt_evals}-inner{params.inner_steps}-{run_name}",
+        config={"command": "autoft", "run_name": run_name, "stage": stage, **asdict(params)},
         entity=wandb_entity,
+        group=run_name,
+        tags=[
+            "autoft",
+            "iwildcam",
+            arch,
+            stage,
+            f"hopt{params.hopt_evals}",
+            f"inner{params.inner_steps}",
+            f"epochs{params.ft_epochs}",
+            f"bs{params.batch_size}x{params.accumulation_steps}",
+        ],
+        notes=(
+            "AutoFT (Choi et al., arXiv:2401.10220) on WILDS iWildCam v2.0. Outer-loop "
+            f"objective: macro F1 on {params.num_ood_hp_examples} class-balanced OOD-val "
+            "examples; best epoch by ID-val macro F1. Recipe follows the official auto-ft "
+            "README: TPE over the 9 loss weights + lr + wd, FLYP text stream."
+        ),
     )
-    model = _load_or_build_zeroshot(model_ckpt, device)
     dataloaders = get_dataloaders(
         params.batch_size,
         model.train_preprocess,
@@ -170,18 +208,27 @@ def autoft(
 
     run_dir = AUTOFT_DIR / run_name
     results = auto_ft(
-        model, dataloaders, ood_hp_dataset, params, device, run_dir, init_hparams=init
+        model,
+        dataloaders,
+        ood_hp_dataset,
+        params,
+        device,
+        run_dir,
+        init_hparams=init,
+        stage=stage,
+        resume=resume,
     )
-    wandb_log(
-        {
-            "final/id_val_metric": results["val_metric"],
-            **{f"final/{k}": v for k, v in results["hparams"].items()},
-        }
-    )
+    if results["val_metric"] is not None:
+        wandb_log(
+            {
+                "final/id_val_metric": results["val_metric"],
+                **{f"final/{k}": v for k, v in results["hparams"].items()},
+            }
+        )
     finish_wandb(run)
     logger.success(
-        f"AutoFT done. Best ID-val {ID_VAL_METRIC}: {results['val_metric']:.4f} "
-        f"(saved under {run_dir})"
+        f"AutoFT {stage} done. Best ID-val {ID_VAL_METRIC}: {results['val_metric']} "
+        f"(artifacts under {run_dir})"
     )
 
 
@@ -197,6 +244,11 @@ def flyp(
     ft_epochs: int = typer.Option(20, "--ft-epochs"),
     max_train_examples: Optional[int] = typer.Option(None, "--max-train-examples"),
     smoke: bool = typer.Option(False, "--smoke"),
+    resume: bool = typer.Option(
+        False,
+        "--resume/--no-resume",
+        help="Continue from the last epoch checkpoint instead of restarting",
+    ),
     wandb: bool = typer.Option(False, "--wandb/--no-wandb"),
     wandb_project: Optional[str] = typer.Option(
         None, "--wandb-project", help="Defaults to $WANDB_PROJECT or " + DEFAULT_WANDB_PROJECT
@@ -223,14 +275,21 @@ def flyp(
         max_train_examples,
         smoke,
     )
+    model = _load_or_build_zeroshot(model_ckpt, device)
+    arch = model.image_encoder.arch
     run = init_wandb(
         wandb,
         wandb_project,
-        wandb_run_name or f"flyp_{run_name}",
+        wandb_run_name or f"flyp-{arch}-epochs{params.ft_epochs}-{run_name}",
         config={"command": "flyp", "run_name": run_name, **asdict(params)},
         entity=wandb_entity,
+        group=run_name,
+        tags=["flyp", "iwildcam", arch, "baseline", f"epochs{params.ft_epochs}"],
+        notes=(
+            "FLYP baseline (Goyal et al., 2023; AutoFT paper's lower baseline) on WILDS "
+            "iWildCam v2.0: ce=1, flyp=1 fixed weights, best epoch by ID-val macro F1."
+        ),
     )
-    model = _load_or_build_zeroshot(model_ckpt, device)
     dataloaders = get_dataloaders(
         params.batch_size,
         model.train_preprocess,
@@ -245,8 +304,17 @@ def flyp(
     loss_fn = LearnedLoss(list(params.losses), loss_weights, initial_params, device=device)
     optimizer = create_optimizer(model, hparams, params.lr, params.wd)
     set_seed(hparams["seed"])
-    ft_model, best_metric, _ = finetune(model, loss_fn, optimizer, dataloaders, params, device)
     run_dir = AUTOFT_DIR / run_name
+    ft_model, best_metric, _ = finetune(
+        model,
+        loss_fn,
+        optimizer,
+        dataloaders,
+        params,
+        device,
+        run_dir=run_dir,
+        resume=resume,
+    )
     save_classifier(ft_model, run_dir / "final_model.pt")
     wandb_log({f"final/id_val_{ID_VAL_METRIC}": best_metric})
     finish_wandb(run)
@@ -269,14 +337,17 @@ def eval_model(
 ):
     """Evaluate a checkpoint on IDVal/IDTest/OODVal/OODTest; writes a JSON report."""
     device = get_device()
+    model = load_classifier(ckpt, device=device)
+    arch = model.image_encoder.arch
     run = init_wandb(
         wandb,
         wandb_project,
         wandb_run_name or f"eval_{Path(ckpt).stem}",
-        config={"command": "eval", "ckpt": str(ckpt)},
+        config={"command": "eval", "ckpt": str(ckpt), "arch": arch},
         entity=wandb_entity,
+        tags=["eval", "iwildcam", arch],
+        notes="WILDS iWildCam v2.0 official eval splits; macro F1 + accuracy.",
     )
-    model = load_classifier(ckpt, device=device)
     results = {}
     for name, split in SPLITS.items():
         split_wrapper = IWildCamSplit(split, model.val_preprocess)

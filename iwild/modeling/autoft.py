@@ -21,7 +21,7 @@ from iwild.modeling.autoft_model import (
     set_seed,
     snapshot_initial_params,
 )
-from iwild.modeling.autoft_wandb import wandb_log
+from iwild.modeling.autoft_wandb import wandb_log, wandb_summary
 
 ALL_LOSSES = ["ce", "dcm", "entropy", "flyp", "hinge", "l1init", "l1zero", "l2init", "l2zero"]
 ID_VAL_METRIC = "F1-macro_all"
@@ -190,20 +190,80 @@ def inner_finetune(
     return model, val_metrics
 
 
-def finetune(model, loss_fn, optimizer, dataloaders, params: AutoFTParams, device):
-    """Full fine-tune over the FT CSV; best epoch by ID-val F1-macro_all is kept."""
+def _save_epoch_checkpoint(ckpt_dir: Path, model, optimizer, epoch: int, best_metric: float):
+    state = {
+        "model": {k: v.detach().cpu() for k, v in model.state_dict().items()},
+        "optimizer": optimizer.state_dict(),
+        "epoch": epoch,
+        "best_metric": best_metric,
+    }
+    torch.save(state, ckpt_dir / "last.pt")
+
+
+def _load_epoch_checkpoint(path: Path, model, optimizer, device):
+    """Restore model + optimizer from last.pt; returns (next_epoch, best_metric)."""
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    model.load_state_dict(state["model"])
+    model.to(device)
+    optimizer.load_state_dict(state["optimizer"])
+    for opt_state in optimizer.state.values():
+        for key, value in opt_state.items():
+            if torch.is_tensor(value):
+                opt_state[key] = value.to(device)
+    return state["epoch"] + 1, state["best_metric"]
+
+
+def finetune(
+    model,
+    loss_fn,
+    optimizer,
+    dataloaders,
+    params: AutoFTParams,
+    device,
+    run_dir: Path | None = None,
+    resume: bool = False,
+):
+    """Full fine-tune over the FT CSV; best epoch by ID-val F1-macro_all is kept.
+
+    With ``run_dir`` set, every epoch writes ``epoch_ckpt/last.pt`` (model + optimizer,
+    for resume), ``epoch_ckpt/best.pt`` (best-so-far model) and ``progress.json``, so a
+    disconnected session can continue with ``resume=True`` instead of starting over.
+    """
+    from tqdm import tqdm
+
     num_batches = len(dataloaders["id"])
     total_steps = params.ft_epochs * num_batches
     scheduler = cosine_lr(
         optimizer, params.lr, params.warmup_length * params.accumulation_steps, total_steps
     )
-    model_copy = copy.deepcopy(model).cpu()
+
+    ckpt_dir = progress_path = best_path = None
+    if run_dir is not None:
+        ckpt_dir = Path(run_dir) / "epoch_ckpt"
+        ckpt_dir.mkdir(parents=True, exist_ok=True)
+        progress_path = Path(run_dir) / "progress.json"
+        best_path = ckpt_dir / "best.pt"
+
     best_metric = float("-inf")
+    start_epoch = 0
+    if resume and ckpt_dir is not None and (ckpt_dir / "last.pt").exists():
+        start_epoch, best_metric = _load_epoch_checkpoint(
+            ckpt_dir / "last.pt", model, optimizer, device
+        )
+        logger.info(
+            f"Resuming fine-tune at epoch {start_epoch} "
+            f"(best {ID_VAL_METRIC} so far: {best_metric:.4f})"
+        )
+
+    model_copy = copy.deepcopy(model).cpu()
+    for param in model_copy.parameters():
+        param.requires_grad = False
     val_metrics = {}
 
-    for epoch in range(params.ft_epochs):
+    for epoch in range(start_epoch, params.ft_epochs):
         model.train()
-        for i, batch in enumerate(dataloaders["id"]):
+        batches = tqdm(dataloaders["id"], desc=f"Epoch {epoch}/{params.ft_epochs}")
+        for i, batch in enumerate(batches):
             step = i + epoch * num_batches
             scheduler(step)
             data = maybe_dictionarize(batch)
@@ -243,7 +303,24 @@ def finetune(model, loss_fn, optimizer, dataloaders, params: AutoFTParams, devic
             model_copy = copy.deepcopy(model).cpu()
             for param in model_copy.parameters():
                 param.requires_grad = False
+            if best_path is not None:
+                torch.save({k: v.cpu() for k, v in model_copy.state_dict().items()}, best_path)
+        if ckpt_dir is not None:
+            _save_epoch_checkpoint(ckpt_dir, model, optimizer, epoch, best_metric)
+            progress_path.write_text(
+                json.dumps(
+                    {
+                        "completed_epoch": epoch,
+                        "next_epoch": epoch + 1,
+                        "best_metric": best_metric,
+                        "ft_epochs": params.ft_epochs,
+                    },
+                    indent=2,
+                )
+            )
 
+    if best_path is not None and best_path.exists():
+        model_copy.load_state_dict(torch.load(best_path, map_location="cpu", weights_only=False))
     return model_copy, best_metric, val_metrics
 
 
@@ -279,8 +356,15 @@ def auto_ft_iteration(
     device,
     run_dir: Path,
     init_hparams: dict | None = None,
+    stage: str = "both",
+    resume: bool = False,
 ) -> dict:
-    """One Optuna study over loss weights / lr / wd, then the final full fine-tune."""
+    """One Optuna study over loss weights / lr / wd, then the final full fine-tune.
+
+    ``stage`` selects what runs: "hopt" (search only, writes hparams.json), "ft"
+    (fine-tune only, loading hparams.json written by a previous hopt stage), or
+    "both" (the full pipeline in one process).
+    """
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -311,27 +395,46 @@ def auto_ft_iteration(
         # Maximize macro F1, prioritizing later trials in case of a tie
         return results["meta_learning_objective"] + trial.number * 1e-10
 
-    if init_hparams is not None and list(params.losses) not in (["ce"], ["flyp"]):
-        pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
-        study = optuna.create_study(sampler=TPESampler(), direction="maximize", pruner=pruner)
-        study.enqueue_trial(init_hparams)
-        study.optimize(hp_objective_fn, n_trials=params.hopt_evals, callbacks=[clear_memory])
-        best_hparams = dict(study.best_params)
-    elif list(params.losses) == ["flyp"]:
-        best_hparams = {"seed": 0, "lossw_flyp": 1.0, "lr": params.lr, "wd": params.wd}
-    elif list(params.losses) == ["ce"]:
-        best_hparams = {"seed": 0, "lossw_ce": 1.0, "lr": params.lr, "wd": params.wd}
-    else:
-        pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
-        study = optuna.create_study(sampler=TPESampler(), direction="maximize", pruner=pruner)
-        study.optimize(hp_objective_fn, n_trials=params.hopt_evals, callbacks=[clear_memory])
-        best_hparams = dict(study.best_params)
+    hparams_path = run_dir / "hparams.json"
+    if stage in ("hopt", "both"):
+        if init_hparams is not None and list(params.losses) not in (["ce"], ["flyp"]):
+            pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
+            study = optuna.create_study(sampler=TPESampler(), direction="maximize", pruner=pruner)
+            study.enqueue_trial(init_hparams)
+            study.optimize(hp_objective_fn, n_trials=params.hopt_evals, callbacks=[clear_memory])
+            best_hparams = dict(study.best_params)
+        elif list(params.losses) == ["flyp"]:
+            best_hparams = {"seed": 0, "lossw_flyp": 1.0, "lr": params.lr, "wd": params.wd}
+        elif list(params.losses) == ["ce"]:
+            best_hparams = {"seed": 0, "lossw_ce": 1.0, "lr": params.lr, "wd": params.wd}
+        else:
+            pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
+            study = optuna.create_study(sampler=TPESampler(), direction="maximize", pruner=pruner)
+            study.optimize(hp_objective_fn, n_trials=params.hopt_evals, callbacks=[clear_memory])
+            best_hparams = dict(study.best_params)
 
-    best_hparams["seed"] = int(best_hparams["seed"])
-    if "ce" in params.losses and "lossw_ce" not in best_hparams:
-        best_hparams["lossw_ce"] = 1.0
-    logger.info(f"Best hyperparameters: {best_hparams}")
-    (run_dir / "hparams.json").write_text(json.dumps(best_hparams, indent=2))
+        best_hparams["seed"] = int(best_hparams["seed"])
+        if "ce" in params.losses and "lossw_ce" not in best_hparams:
+            best_hparams["lossw_ce"] = 1.0
+        logger.info(f"Best hyperparameters: {best_hparams}")
+        hparams_path.write_text(json.dumps(best_hparams, indent=2))
+        wandb_summary(
+            {"best_hparams": json.dumps(best_hparams), "stage": f"hopt:{params.hopt_evals}"}
+        )
+        if stage == "hopt":
+            logger.success(
+                f"HPO stage done ({params.hopt_evals} trials); hparams saved to {hparams_path}. "
+                "Run with --stage ft to fine-tune (add --resume to continue a disconnected run)."
+            )
+            return {"model": None, "val_metric": None, "hparams": best_hparams, "results": {}}
+    else:
+        if not hparams_path.exists():
+            raise FileNotFoundError(
+                f"{hparams_path} not found. Run --stage hopt first, or copy a hyperparameter "
+                "JSON (e.g. the paper's autoft_hparams_iwildcam.json) into the run directory."
+            )
+        best_hparams = json.loads(hparams_path.read_text())
+        logger.info(f"Loaded hyperparameters from {hparams_path}: {best_hparams}")
 
     initial_params = snapshot_initial_params(model)
     loss_weights = get_loss_weights(list(params.losses), best_hparams).to(device)
@@ -339,7 +442,14 @@ def auto_ft_iteration(
     optimizer = create_optimizer(model, best_hparams, params.lr, params.wd)
     set_seed(best_hparams["seed"])
     ft_model, val_metric, val_metrics = finetune(
-        model, loss_fn, optimizer, dataloaders, params, device
+        model,
+        loss_fn,
+        optimizer,
+        dataloaders,
+        params,
+        device,
+        run_dir=run_dir,
+        resume=resume,
     )
     save_classifier(ft_model, run_dir / "final_model.pt")
     results = {
@@ -366,6 +476,8 @@ def auto_ft(
     device,
     run_dir: Path,
     init_hparams: dict | None = None,
+    stage: str = "both",
+    resume: bool = False,
 ) -> dict:
     """Run the AutoFT pipeline: hyperparameter search plus final fine-tune."""
     best = None
@@ -379,8 +491,12 @@ def auto_ft(
             device,
             run_dir,
             init_hparams,
+            stage,
+            resume,
         )
-        if best is None or results["val_metric"] > best["val_metric"]:
+        if best is None or (results["val_metric"] or float("-inf")) > (
+            best["val_metric"] or float("-inf")
+        ):
             best = results
     return best
 
