@@ -17,7 +17,9 @@ INTERIM_DATA_DIR = DATA_DIR / "interim"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 EXTERNAL_DATA_DIR = DATA_DIR / "external"
 
-MODELS_DIR = PROJ_ROOT / "models"
+# MODELS_DIR / REPORTS_DIR can be redirected onto a persistent mount (e.g. a Modal
+# volume) while the code still resolves against the repo by default.
+MODELS_DIR = Path(os.getenv("IWILD_MODELS_DIR", str(PROJ_ROOT / "models")))
 ZEROSHOT_DIR = MODELS_DIR / "zeroshot"
 AUTOFT_DIR = MODELS_DIR / "autoft"
 
@@ -32,7 +34,7 @@ IWILDCAM_LABELS_PATH = (
     Path(__file__).resolve().parent / "modeling" / "iwildcam_metadata" / "labels.csv"
 )
 
-REPORTS_DIR = PROJ_ROOT / "reports"
+REPORTS_DIR = Path(os.getenv("IWILD_REPORTS_DIR", str(PROJ_ROOT / "reports")))
 FIGURES_DIR = REPORTS_DIR / "figures"
 
 # If tqdm is installed, configure loguru with tqdm.write

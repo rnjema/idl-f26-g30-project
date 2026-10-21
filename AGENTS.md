@@ -72,7 +72,9 @@ Cookiecutter Data Science layout:
 
 ```
 iwild/                  # the only Python package (installed editable)
-├── config.py           # central paths (DATA_DIR via $IWILD_DATA_DIR, MODELS_DIR, CSV_DIR, ...) + loguru setup
+├── config.py           # central paths (DATA_DIR/MODELS_DIR/REPORTS_DIR overridable via
+│                       #   $IWILD_DATA_DIR / $IWILD_MODELS_DIR / $IWILD_REPORTS_DIR; Modal mounts
+│                       #   and the workstation both rely on this) + loguru setup
 ├── dataset.py          # Typer CLI: download/verify WILDS iWildCam, make-ft-csv, location-split
 ├── features.py         # feature-generation CLI stub (selector lane goes here later)
 ├── plots.py            # plotting CLI stub
@@ -87,6 +89,9 @@ iwild/                  # the only Python package (installed editable)
     └── predict.py      # inference CLI stub (selection/predict lane, not implemented yet)
 data/{raw,interim,processed,external}/   # datasets — all git-ignored except .gitkeep dirs
 models/                 # trained model artifacts + hub/ (CLIP weight cache); git-ignored content
+scripts/
+├── modal_autoft.py     # Modal app: iwildcam-data + iwildcam-ckpts volumes, staged runs,
+│                       # periodic volume commits, W&B via a 'wandb' Modal secret
 notebooks/              # Jupyter notebooks; naming convention: `N.N-initials-short-description`
 reports/figures/        # generated figures
 references/             # papers, data dictionaries
@@ -127,10 +132,12 @@ ID crosses split slabs), as the docs explicitly demand.
   `data/raw/`; never edit it in place (write derived data to `interim/` or `processed/`).
   The iWildCam v2.0 download is ~12 GB compressed / ~15 GB extracted — check free space first;
   the dev workstation's D: has been nearly full (18 GB free) and C: is 100% full.
-- Download/verify: `python iwild/dataset.py download` (fetches via `wilds`; if the WILDS/CodaLab
-  mirror is down it prints manual-mirror instructions). `verify` re-runs the split-size,
-  class-count, and location-leakage assertions. `make-ft-csv` builds the FLYP fine-tuning CSV;
-  `location-split` writes the seeded 80/20 trap split for the selector lane.
+- Download/verify: `python iwild/dataset.py download` fetches the CodaLab bundle directly
+  (the `http(s)` endpoints share an expired TLS cert, so verification is disabled; the
+  tarball is flat and is extracted into `iwildcam_v2.0/`, matching the WILDS layout, and
+  leftover flat extractions are repaired in place). `verify` re-runs the split-size,
+  class-count, and location-leakage assertions. `make-ft-csv` builds the FLYP fine-tuning
+  CSV; `location-split` writes the seeded 80/20 trap split for the selector lane.
 - `.env` (git-ignored) is for credentials such as dataset download tokens — never commit it and
   never print its contents.
 - Model artifacts go in `models/` (content git-ignored); CLIP weight cache in `models/hub/`.
@@ -151,16 +158,21 @@ The classifier baseline is a native reimplementation of **AutoFT** (WILDS iWildC
 not fit our RTX 4070 8 GB, so we target **CLIP ViT-B/16 @ 224px**; claims are always relative to
 the FLYP run on the same backbone, never leaderboard entries.
 
-Recipe (faithful to github.com/cchoi1/auto-ft @ 594e6a2): zero-shot head from 2 prompts × 205
-`labels.csv` classnames (official 205-way quirk — WILDS v2.0 has 182 classes); FLYP FT CSV =
+Recipe (faithful to github.com/cchoi1/auto-ft @ 594e6a2): zero-shot head from 2 prompts × the
+182 `labels.csv` classnames with `y < 99999` (matching WILDS v2.0's 182 classes; the 24
+y ≥ 99999 rows are unused); FLYP FT CSV =
 129,809 train images × 2 prompts; 9 loss terms (`ce` anchored at weight 1.0) tuned by Optuna TPE
 + MedianPruner(5,30,10) over loss weights / lr / wd / seed; objective = macro F1 on a
 class-balanced 1000-example OOD-val subset; final fine-tune 20 epochs, best epoch by ID-val
-macro F1. Documented deviations: pandas (not dask), state_dict checkpoints (not pickling),
+macro F1, with per-epoch checkpoints so `--stage ft --resume` continues after a disconnect
+(the pipeline splits into `--stage hopt` / `--stage ft`). Documented deviations: pandas (not
+dask), state_dict checkpoints (not pickling),
 single GPU (no DataParallel), batch 64×2 (VRAM), `--hopt-evals` default 100 (paper: 500), and the
 class-balanced OOD-HP subset is actually applied (official flag is parsed but never wired).
 Known ported quirks kept on purpose: scheduler LR comes from the base `--lr` (not the tuned
 trial lr); final fine-tune steps every batch despite `accumulation_steps` loss scaling.
 
-Driver: `notebooks/1.0-g30-autoft-baseline.ipynb`. Smoke first:
+Driver: `notebooks/1.0-g30-autoft-baseline.ipynb` (local), `notebooks/1.1-...-colab.ipynb`
+(Colab), `scripts/modal_autoft.py` (Modal volumes + W&B). W&B runs carry the leaderboard-entry
+name/config (`submission` block in the run config). Smoke first:
 `python iwild/modeling/train.py autoft --smoke --run-name smoke --no-init-hparams`.

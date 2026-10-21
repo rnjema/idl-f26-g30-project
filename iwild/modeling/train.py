@@ -35,6 +35,7 @@ from iwild.modeling.autoft_wandb import (
     finish_wandb,
     init_wandb,
     wandb_log,
+    wandb_summary,
 )
 
 app = typer.Typer()
@@ -164,16 +165,47 @@ def autoft(
     )
     model = _load_or_build_zeroshot(model_ckpt, device)
     arch = model.image_encoder.arch
+    submission = {
+        "algorithm": "AutoFT",
+        "authors": "Choi, Lee, Chen, Zhou, Raghunathan, Finn",
+        "paper": "arXiv:2401.10220",
+        "leaderboard": "WILDS iWildCam",
+        "leaderboard_url": "https://wilds.stanford.edu/leaderboard/#iwildcam",
+        "leaderboard_entry": "AutoFT 52.0 (0.4) OOD-test macro F1, CLIP ViT-L/14@336, WiSE-FT ensembled",
+        "dataset": "iWildCam v2.0 (WILDS benchmark)",
+        "official_metric": "F1-macro_all (OOD test)",
+        "protocol": "official WILDS splits; HPO objective on OOD val; OOD test touched once",
+        "reproduction_backbone": f"CLIP {arch}",
+    }
     run = init_wandb(
         wandb,
         wandb_project,
-        wandb_run_name
-        or f"autoft-{arch}-hopt{params.hopt_evals}-inner{params.inner_steps}-{run_name}",
-        config={"command": "autoft", "run_name": run_name, "stage": stage, **asdict(params)},
+        wandb_run_name or f"AutoFT-{arch}-iWildCam-{run_name}",
+        config={
+            "submission": submission,
+            "recipe": {
+                "stage": stage,
+                "hopt_evals": params.hopt_evals,
+                "inner_steps": params.inner_steps,
+                "ft_epochs": params.ft_epochs,
+                "batch_size": params.batch_size,
+                "accumulation_steps": params.accumulation_steps,
+                "warmup_length": params.warmup_length,
+                "base_lr": params.lr,
+                "base_wd": params.wd,
+                "num_ood_hp_examples": params.num_ood_hp_examples,
+                "losses": list(params.losses),
+                "clip_gradient": params.clip_gradient,
+            },
+            "command": "autoft",
+            "run_name": run_name,
+            "stage": stage,
+            **asdict(params),
+        },
         entity=wandb_entity,
         group=run_name,
         tags=[
-            "autoft",
+            "AutoFT",
             "iwildcam",
             arch,
             stage,
@@ -183,10 +215,11 @@ def autoft(
             f"bs{params.batch_size}x{params.accumulation_steps}",
         ],
         notes=(
-            "AutoFT (Choi et al., arXiv:2401.10220) on WILDS iWildCam v2.0. Outer-loop "
-            f"objective: macro F1 on {params.num_ood_hp_examples} class-balanced OOD-val "
-            "examples; best epoch by ID-val macro F1. Recipe follows the official auto-ft "
-            "README: TPE over the 9 loss weights + lr + wd, FLYP text stream."
+            "Reproduction of the WILDS iWildCam leaderboard entry 'AutoFT' (Choi et al., "
+            "arXiv:2401.10220; leaderboard 52.0 macro F1 with ViT-L/14@336 + WiSE-FT). "
+            f"Outer-loop objective: macro F1 on {params.num_ood_hp_examples} class-balanced "
+            "OOD-val examples; best epoch by ID-val macro F1; recipe per the official auto-ft "
+            "README (TPE over 9 loss weights + lr + wd, FLYP text stream)."
         ),
     )
     dataloaders = get_dataloaders(
@@ -225,6 +258,7 @@ def autoft(
                 **{f"final/{k}": v for k, v in results["hparams"].items()},
             }
         )
+        wandb_summary({f"IDVal_best/{ID_VAL_METRIC}": results["val_metric"]})
     finish_wandb(run)
     logger.success(
         f"AutoFT {stage} done. Best ID-val {ID_VAL_METRIC}: {results['val_metric']} "
@@ -280,14 +314,28 @@ def flyp(
     run = init_wandb(
         wandb,
         wandb_project,
-        wandb_run_name or f"flyp-{arch}-epochs{params.ft_epochs}-{run_name}",
-        config={"command": "flyp", "run_name": run_name, **asdict(params)},
+        wandb_run_name or f"FLYP-{arch}-iWildCam-{run_name}",
+        config={
+            "submission": {
+                "algorithm": "FLYP (lower baseline in the AutoFT paper)",
+                "paper": "arXiv:2401.10220 (Table 2)",
+                "leaderboard": "WILDS iWildCam",
+                "dataset": "iWildCam v2.0 (WILDS benchmark)",
+                "official_metric": "F1-macro_all (OOD test)",
+                "reproduction_backbone": f"CLIP {arch}",
+            },
+            "recipe": {"losses": ["ce", "flyp"], "loss_weights": {"ce": 1.0, "flyp": 1.0}},
+            "command": "flyp",
+            "run_name": run_name,
+            **asdict(params),
+        },
         entity=wandb_entity,
         group=run_name,
-        tags=["flyp", "iwildcam", arch, "baseline", f"epochs{params.ft_epochs}"],
+        tags=["FLYP", "iwildcam", arch, "baseline", f"epochs{params.ft_epochs}"],
         notes=(
-            "FLYP baseline (Goyal et al., 2023; AutoFT paper's lower baseline) on WILDS "
-            "iWildCam v2.0: ce=1, flyp=1 fixed weights, best epoch by ID-val macro F1."
+            "FLYP baseline as reported in the AutoFT paper (Choi et al., arXiv:2401.10220, "
+            "Table 2: 46.0 OOD-test macro F1 with ViT-L/14@336): ce=1, flyp=1 fixed loss "
+            "weights, best epoch by ID-val macro F1."
         ),
     )
     dataloaders = get_dataloaders(
@@ -365,6 +413,10 @@ def eval_model(
                 f"eval/{name}/{ID_VAL_METRIC}": metrics[ID_VAL_METRIC],
                 f"eval/{name}/acc": metrics["acc"],
             }
+        )
+        # sticky summary under the paper's split nomenclature (IDVal/IDTest/OODVal/OODTest)
+        wandb_summary(
+            {f"{name}/{ID_VAL_METRIC}": metrics[ID_VAL_METRIC], f"{name}/acc": metrics["acc"]}
         )
         logger.info(
             f"{name}: {ID_VAL_METRIC} = {metrics[ID_VAL_METRIC]:.4f}, "

@@ -39,6 +39,9 @@ An attempt at scaling beyond the benchmark heights on the iWILD Cam Challenge
 │
 ├── setup.cfg          <- Configuration file for flake8
 │
+├── scripts
+│   └── modal_autoft.py <- Modal app: persistent data/checkpoint volumes + W&B, no session limits
+│
 └── iwild   <- Source code for use in this project.
     │
     ├── __init__.py             <- Makes iwild a Python module
@@ -65,4 +68,24 @@ An attempt at scaling beyond the benchmark heights on the iWILD Cam Challenge
 ```
 
 --------
+
+## Running on Modal (cloud GPUs, persistent volumes)
+
+`scripts/modal_autoft.py` runs the same staged pipeline on Modal without Colab's
+session limits. Data lives on the `iwildcam-data` volume (downloaded once), all
+checkpoints on the `iwildcam-ckpts` volume (per-epoch resume survives preemption;
+volumes are committed every 10 min inside the job), and W&B reporting is identical to
+local/Colab — runs are named after the leaderboard entry (`AutoFT-<arch>-iWildCam-<run>`)
+with the entry's paper/leaderboard config in `wandb.run.config.submission`.
+
+```bash
+pip install modal && modal setup
+modal secret create wandb WANDB_API_KEY=... WANDB_PROJECT=... WANDB_ENTITY=...
+modal run scripts/modal_autoft.py::download_data                      # once, CPU
+modal run --gpu A100 scripts/modal_autoft.py::autoft_stage --stage hopt --run-name autoft_vitb16_official
+modal run --gpu A100 scripts/modal_autoft.py::autoft_stage --stage ft   --run-name autoft_vitb16_official
+```
+
+Paths are steered by `IWILD_DATA_DIR` / `IWILD_MODELS_DIR` / `IWILD_REPORTS_DIR`
+(see `iwild/config.py`), which the app points at the mounted volumes.
 

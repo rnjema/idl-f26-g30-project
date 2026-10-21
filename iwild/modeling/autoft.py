@@ -403,15 +403,19 @@ def auto_ft_iteration(
             study.enqueue_trial(init_hparams)
             study.optimize(hp_objective_fn, n_trials=params.hopt_evals, callbacks=[clear_memory])
             best_hparams = dict(study.best_params)
+            best_objective = float(study.best_value)
         elif list(params.losses) == ["flyp"]:
             best_hparams = {"seed": 0, "lossw_flyp": 1.0, "lr": params.lr, "wd": params.wd}
+            best_objective = None
         elif list(params.losses) == ["ce"]:
             best_hparams = {"seed": 0, "lossw_ce": 1.0, "lr": params.lr, "wd": params.wd}
+            best_objective = None
         else:
             pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=30, interval_steps=10)
             study = optuna.create_study(sampler=TPESampler(), direction="maximize", pruner=pruner)
             study.optimize(hp_objective_fn, n_trials=params.hopt_evals, callbacks=[clear_memory])
             best_hparams = dict(study.best_params)
+            best_objective = float(study.best_value)
 
         best_hparams["seed"] = int(best_hparams["seed"])
         if "ce" in params.losses and "lossw_ce" not in best_hparams:
@@ -419,7 +423,11 @@ def auto_ft_iteration(
         logger.info(f"Best hyperparameters: {best_hparams}")
         hparams_path.write_text(json.dumps(best_hparams, indent=2))
         wandb_summary(
-            {"best_hparams": json.dumps(best_hparams), "stage": f"hopt:{params.hopt_evals}"}
+            {
+                "best_hparams": json.dumps(best_hparams),
+                "hopt/best_objective": best_objective,
+                "stage": f"hopt:{params.hopt_evals}",
+            }
         )
         if stage == "hopt":
             logger.success(

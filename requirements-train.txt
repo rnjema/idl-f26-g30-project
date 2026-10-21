@@ -20,3 +20,6 @@ ipykernel
 # Optional metrics tracking (used when --wandb is passed; the code degrades
 # gracefully to plain loguru + JSON when wandb is absent)
 wandb
+
+# Modal launcher (local CLI; the container image installs its own copy)
+modal
