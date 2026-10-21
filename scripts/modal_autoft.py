@@ -95,12 +95,10 @@ image = (
         extra_options="--index-url https://download.pytorch.org/whl/cu128",
     )
     .pip_install_from_requirements("requirements-modal.txt")
+    # add_local_python_source must be the LAST build step (Modal layers local files at
+    # container startup); the labels.csv package-data check therefore runs at job start
+    # in _check_package_data instead of as a build step.
     .add_local_python_source("iwild")
-    .run_commands(
-        "python -c \"import pathlib, iwild; "
-        "p = pathlib.Path(iwild.__file__).parent / 'modeling/iwildcam_metadata/labels.csv'; "
-        "assert p.exists(), f'missing package data: {p}'\""
-    )
 )
 
 ENV = {
@@ -139,12 +137,23 @@ def _start_periodic_commits() -> None:
     threading.Thread(target=loop, daemon=True).start()
 
 
+def _check_package_data() -> None:
+    """Fail fast at job start if the mounted iwild package is missing its data files."""
+    import pathlib
+
+    import iwild
+
+    labels = pathlib.Path(iwild.__file__).parent / "modeling/iwildcam_metadata/labels.csv"
+    assert labels.exists(), f"missing package data: {labels}"
+
+
 def _run_cli(args: list[str]) -> None:
     import subprocess
     import sys
 
     import iwild.modeling.train as train_cli
 
+    _check_package_data()
     cmd = [sys.executable, train_cli.__file__] + args
     print("RUN:", " ".join(cmd), flush=True)
     subprocess.run(cmd, check=True)
@@ -164,6 +173,7 @@ def download_data() -> None:
 
     import iwild.dataset as dataset_cli
 
+    _check_package_data()
     for args in (["download"], ["make-ft-csv"], ["location-split", "--seed", "42"]):
         cmd = [sys.executable, dataset_cli.__file__] + args
         print("RUN:", " ".join(cmd), flush=True)
