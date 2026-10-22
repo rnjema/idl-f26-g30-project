@@ -25,6 +25,8 @@ An attempt at scaling beyond the benchmark heights on the iWILD Cam Challenge
 ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
 │                         the creator's initials, and a short `-` delimited description, e.g.
 │                         `1.0-jqp-initial-data-exploration`.
+│   ├── absgd          <- Standalone Marimo notebooks: ABSGD ResNet-50 replication (setup/train/results)
+│   └── sclr           <- Standalone Marimo notebooks: DFN ViT-H/14 fine-tune + likelihood-ratio selectors
 │
 ├── pyproject.toml     <- Project configuration file with package metadata for 
 │                         iwild and configuration for tools like black
