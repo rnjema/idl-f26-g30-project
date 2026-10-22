@@ -182,3 +182,11 @@ rnjema_g30_autoft_colab.ipynb
 
 # Midterm report source (LaTeX + figures live with the repo)
 !/reports/midterm/
+
+# LaTeX build byproducts
+*.aux
+*.bbl
+*.blg
+*.out
+*.log
+*.synctex.gz
