@@ -442,6 +442,7 @@ def wisefmt(
     run_name: str = typer.Option("wisefmt", "--run-name"),
     num_alphas: int = typer.Option(11, "--num-alphas"),
     batch_size: int = typer.Option(64, "--batch-size"),
+    num_workers: int = typer.Option(2, "--workers"),
 ):
     """Sweep WiSE-FT alpha in [0, 1]; select by ID-val macro F1, report OOD metrics."""
     device = get_device()
@@ -452,8 +453,9 @@ def wisefmt(
     ft_state = {k: v.clone() for k, v in finetuned_model.state_dict().items()}
 
     id_val = IWildCamSplit("id_val", zeroshot_model.val_preprocess)
+    loader_kwargs = {"num_workers": num_workers, "pin_memory": torch.cuda.is_available()}
     id_val_loader = torch.utils.data.DataLoader(
-        id_val.dataset, batch_size=batch_size, shuffle=False, pin_memory=torch.cuda.is_available()
+        id_val.dataset, batch_size=batch_size, shuffle=False, **loader_kwargs
     )
     ood_val = IWildCamSplit("val", zeroshot_model.val_preprocess)
     ood_test = IWildCamSplit("test", zeroshot_model.val_preprocess)
@@ -469,14 +471,16 @@ def wisefmt(
 
     theta = wise_ft_interpolate(zeroshot_state, ft_state, best_alpha)
     zeroshot_model.load_state_dict(theta)
+    ood_val_metrics, ood_test_metrics = {}, {}
     for name, wrapper in (("OODVal", ood_val), ("OODTest", ood_test)):
         loader = torch.utils.data.DataLoader(
-            wrapper.dataset,
-            batch_size=batch_size,
-            shuffle=False,
-            pin_memory=torch.cuda.is_available(),
+            wrapper.dataset, batch_size=batch_size, shuffle=False, **loader_kwargs
         )
         metrics = evaluate_split(zeroshot_model, loader, wrapper, device)
+        if name == "OODVal":
+            ood_val_metrics = metrics
+        else:
+            ood_test_metrics = metrics
         logger.info(
             f"best alpha={best_alpha:.2f} {name}: {ID_VAL_METRIC} = "
             f"{metrics[ID_VAL_METRIC]:.4f}, acc = {metrics['acc']:.2f}"
@@ -488,6 +492,10 @@ def wisefmt(
         "best_alpha": best_alpha,
         "id_val_metric": best_metric,
         "id_val_metric_name": ID_VAL_METRIC,
+        "ood_val_metric": ood_val_metrics[ID_VAL_METRIC] if ood_val_metrics else None,
+        "ood_test_metric": ood_test_metrics[ID_VAL_METRIC] if ood_test_metrics else None,
+        "ood_val_acc": ood_val_metrics.get("acc") if ood_val_metrics else None,
+        "ood_test_acc": ood_test_metrics.get("acc") if ood_test_metrics else None,
     }
     (run_dir / "results.json").write_text(json.dumps(report, indent=2, default=float))
     logger.success(f"WiSE-FT done. Best alpha={best_alpha:.3f} (saved under {run_dir})")

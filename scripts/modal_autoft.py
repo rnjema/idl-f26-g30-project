@@ -308,14 +308,23 @@ def flyp_stage(
 
 
 @app.function(image=image, gpu=_gpu(), volumes=VOLUMES, env=ENV, secrets=SECRETS, timeout=DAY)
-def eval_model(ckpt: str, batch_size: int = 128) -> None:
+def eval_model(ckpt: str, batch_size: int = 128, workers: int = 12) -> None:
     """Evaluate a checkpoint from the volume on all four WILDS splits (logs to W&B)."""
-    _run_cli(["eval", "--ckpt", ckpt, "--batch-size", str(batch_size), "--wandb"])
+    _run_cli(
+        [
+            "eval", "--ckpt", ckpt,
+            "--batch-size", str(batch_size),
+            "--workers", str(workers),
+            "--wandb",
+        ]
+    )
     ckpt_volume.commit()
 
 
 @app.function(image=image, gpu=_gpu(), volumes=VOLUMES, env=ENV, secrets=SECRETS, timeout=DAY)
-def wisefmt(zeroshot: str, finetuned: str, run_name: str, num_alphas: int = 11) -> None:
+def wisefmt(
+    zeroshot: str, finetuned: str, run_name: str, num_alphas: int = 11, workers: int = 12
+) -> None:
     """WiSE-FT alpha sweep between a zeroshot and a fine-tuned checkpoint (logs to W&B)."""
     _run_cli(
         [
@@ -325,6 +334,7 @@ def wisefmt(zeroshot: str, finetuned: str, run_name: str, num_alphas: int = 11) 
             "--run-name", run_name,
             "--num-alphas", str(num_alphas),
             "--batch-size", "128",
+            "--workers", str(workers),
         ]
     )
     ckpt_volume.commit()
