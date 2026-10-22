@@ -93,6 +93,9 @@ scripts/
 ├── modal_autoft.py     # Modal app: iwildcam-data + iwildcam-ckpts volumes, staged runs,
 │                       # periodic volume commits, W&B via a 'wandb' Modal secret
 notebooks/              # Jupyter notebooks; naming convention: `N.N-initials-short-description`
+├── absgd/              # standalone Marimo notebooks (shared module embedded as base64; run on
+│                       #   the Marimo GPU box): ABSGD ResNet-50 replication
+└── sclr/               # same, DFN ViT-H/14 fine-tune + likelihood-ratio selectors
 reports/figures/        # generated figures
 references/             # papers, data dictionaries
 docs/                   # mkdocs project
