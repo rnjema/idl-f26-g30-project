@@ -308,6 +308,20 @@ def flyp_stage(
 
 
 @app.function(image=image, gpu=_gpu(), volumes=VOLUMES, env=ENV, secrets=SECRETS, timeout=DAY)
+def build_zeroshot(
+    arch: str = "ViT-B-16",
+    pretrained: str = "openai",
+    name: str | None = None,
+) -> None:
+    """Build a zero-shot CLIP model for any open_clip arch (e.g. ViT-L-14-336) on the volume."""
+    args = ["zeroshot", "--arch", arch, "--pretrained", pretrained]
+    if name:
+        args += ["--name", name]
+    _run_cli(args)
+    ckpt_volume.commit()
+
+
+@app.function(image=image, gpu=_gpu(), volumes=VOLUMES, env=ENV, secrets=SECRETS, timeout=DAY)
 def eval_model(ckpt: str, batch_size: int = 128, workers: int = 12) -> None:
     """Evaluate a checkpoint from the volume on all four WILDS splits (logs to W&B)."""
     _run_cli(
