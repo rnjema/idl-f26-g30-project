@@ -1,0 +1,55 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{pmlr-v139-koh21a}
+\citation{beery2020iwildcam}
+\citation{radford2021learning}
+\citation{goyal2023flyp}
+\citation{choi2024autoft}
+\citation{wortsman2022wiseft}
+\citation{liang2024selectiveclassificationdistributionshifts}
+\citation{heng2026know}
+\citation{goyal2023flyp}
+\citation{choi2024autoft}
+\citation{wortsman2022wiseft}
+\citation{absgd202X}
+\citation{fang2023dfn}
+\citation{pmlr-v139-koh21a}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Review of related literature}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Wildlife classification under distribution shift}{2}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{CLIP fine-tuning under shift}{2}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Selective classification under distribution shifts}{2}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Likelihood-ratio-based selective classification}{2}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Methodology}{2}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Model description}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Dataset}{2}{subsection.3.2}\protected@file@percent }
+\citation{choi2024autoft}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Baseline classifiers on iWildCam-WILDS (macro F1, \%; official splits). ResNet-50 numbers are means over three seeds; DFN ViT-H/14 is the final-epoch checkpoint of its single reported run (best-epoch selection gives 45.7 on OODTest). OOD-test was evaluated once per model.}}{3}{table.1}\protected@file@percent }
+\newlabel{tab:baselines}{{1}{3}{Baseline classifiers on iWildCam-WILDS (macro F1, \%; official splits). ResNet-50 numbers are means over three seeds; DFN ViT-H/14 is the final-epoch checkpoint of its single reported run (best-epoch selection gives 45.7 on OODTest). OOD-test was evaluated once per model}{table.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Macro F1 of the baseline family on the four official splits. CLIP fine-tunes dominate the ResNet baseline; every model drops on OOD splits relative to ID.}}{3}{figure.1}\protected@file@percent }
+\newlabel{fig:baselines}{{1}{3}{Macro F1 of the baseline family on the four official splits. CLIP fine-tunes dominate the ResNet baseline; every model drops on OOD splits relative to ID}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Evaluation metric}{3}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Experimental depth and iteration}{3}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Baselines and results}{3}{section.4}\protected@file@percent }
+\citation{liang2024selectiveclassificationdistributionshifts}
+\citation{heng2026know}
+\citation{heng2026know}
+\bibstyle{plainnat}
+\bibdata{references}
+\bibcite{absgd202X}{{1}{2024}{{abs}}{{}}}
+\bibcite{beery2020iwildcam}{{2}{2020}{{Beery et~al.}}{{Beery, Cole, and Gjoka}}}
+\bibcite{choi2024autoft}{{3}{2024}{{Choi et~al.}}{{Choi, Lee, Chen, Zhou, Raghunathan, and Finn}}}
+\bibcite{fang2023dfn}{{4}{2023}{{Gadre et~al.}}{{Gadre, Ilharco, Fang, Hayase, Smyrnis, Nguyen, Marten, Wortsman, Ghosh, Zhang, Orgad, Aldeen, Pratt, Ramanujan, Bitton, Marathe, Mussmann, Vencu, Cherti, Krishna, Koh, Saukh, Ratner, Song, Hajishirzi, Farhadi, Beaumont, Oh, and Schmidt}}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{4}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Planned work}{4}{section.6}\protected@file@percent }
+\bibcite{goyal2023flyp}{{5}{2023}{{Goyal et~al.}}{{Goyal, Singh, Jiang, Mark, Aneja, and Schmidt}}}
+\bibcite{heng2026know}{{6}{2026}{{Heng and Soh}}{{}}}
+\bibcite{pmlr-v139-koh21a}{{7}{2021}{{Koh et~al.}}{{Koh, Sagawa, Marklund, Xie, Zhang, Balsubramani, Hu, Yasunaga, Phillips, Gao, Lee, David, Stavness, Guo, Earnshaw, Haque, Beery, Leskovec, Kundaje, Pierson, Levine, Finn, and Liang}}}
+\bibcite{liang2024selectiveclassificationdistributionshifts}{{8}{2024}{{Liang et~al.}}{{Liang, Peng, and Sun}}}
+\bibcite{radford2021learning}{{9}{2021}{{Radford et~al.}}{{Radford, Kim, Hallacy, Ramesh, Goh, Agarwal, Sastry, Askell, Mishkin, Clark, Krueger, and Sutskever}}}
+\bibcite{wortsman2022wiseft}{{10}{2022}{{Wortsman et~al.}}{{Wortsman, Ilharco, Kim, York, Hajishirzi, Farhadi, and Schmidt}}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Training dynamics for one representative run per baseline family (from W\&B histories): FLYP contrastive loss, AutoFT per-epoch ID-val macro F1 (dashed line: the selected best), ResNet-50+AbsGD training loss, and DFN ViT-H/14 per-epoch ID/OOD-test macro F1.}}{5}{figure.2}\protected@file@percent }
+\newlabel{fig:curves}{{2}{5}{Training dynamics for one representative run per baseline family (from W\&B histories): FLYP contrastive loss, AutoFT per-epoch ID-val macro F1 (dashed line: the selected best), ResNet-50+AbsGD training loss, and DFN ViT-H/14 per-epoch ID/OOD-test macro F1}{figure.2}{}}
+\gdef \@abspage@last{5}
