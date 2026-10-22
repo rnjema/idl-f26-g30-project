@@ -43,7 +43,7 @@ on `modal run`; `modal deploy`/`modal secret create` do take one):
     modal run --gpu A100 scripts/modal_autoft.py::autoft_stage --stage ft \\
         --run-name autoft_vitb16_paperhparams --hparams-from-paper
 
-    # FLYP baseline
+    # FLYP baseline 
     modal run --gpu A100 scripts/modal_autoft.py::flyp_stage --run-name flyp_baseline
 
 ('main' environment shown; for 'dev' prefix every command with MODAL_ENVIRONMENT=dev —
@@ -311,6 +311,22 @@ def flyp_stage(
 def eval_model(ckpt: str, batch_size: int = 128) -> None:
     """Evaluate a checkpoint from the volume on all four WILDS splits (logs to W&B)."""
     _run_cli(["eval", "--ckpt", ckpt, "--batch-size", str(batch_size), "--wandb"])
+    ckpt_volume.commit()
+
+
+@app.function(image=image, gpu=_gpu(), volumes=VOLUMES, env=ENV, secrets=SECRETS, timeout=DAY)
+def wisefmt(zeroshot: str, finetuned: str, run_name: str, num_alphas: int = 11) -> None:
+    """WiSE-FT alpha sweep between a zeroshot and a fine-tuned checkpoint (logs to W&B)."""
+    _run_cli(
+        [
+            "wisefmt",
+            "--zeroshot", zeroshot,
+            "--finetuned", finetuned,
+            "--run-name", run_name,
+            "--num-alphas", str(num_alphas),
+            "--batch-size", "128",
+        ]
+    )
     ckpt_volume.commit()
 
 
