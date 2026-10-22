@@ -1,9 +1,11 @@
 # Data
 /data/
 
-# Models and generated reports (large artifacts; .gitkeep placeholders stay tracked)
+# Models and generated artifacts (large binaries stay untracked; report write-ups tracked)
 /models/
-/reports/
+/reports/*
+!/reports/*.md
+!/reports/.gitkeep
 
 # Mac OS-specific storage files
 .DS_Store
