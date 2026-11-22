@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" role="img" aria-labelledby="title desc">
+  <title id="title">YOLO-CLIP image-level adaptation of YOLO-World</title>
+  <desc id="desc">Camera-trap images pass through a frozen YOLO-World detector. WILDS animal names are encoded once by a frozen CLIP text encoder to initialize 181 trainable class vectors. The detector produces boxes and class scores. During training, maximum pre-NMS region scores and a fixed empty logit feed image-level cross-entropy. At inference, NMS, the top detection, and a validation-selected threshold produce one animal or empty label.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#415563"/>
+    </marker>
+    <marker id="orange-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#a55b12"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #17242e; }
+      .small { font-size: 20px; fill: #50616e; }
+      .body { font-size: 25px; font-weight: 600; }
+      .section { font-size: 22px; font-weight: 700; letter-spacing: 1.6px; }
+      .path { fill: none; stroke: #415563; stroke-width: 3; marker-end: url(#arrow); }
+      .box { fill: #ffffff; stroke: #7f96a3; stroke-width: 2.3; rx: 12; }
+      .trainable { fill: #fff1d8; stroke: #a55b12; stroke-width: 2.6; rx: 12; }
+      .frozen { fill: #edf3f6; stroke: #758d9b; stroke-width: 2; rx: 12; }
+      .training { fill: #fff8ed; stroke: #c7924e; stroke-width: 2; rx: 12; }
+      .inference { fill: #eef7f4; stroke: #6c9e90; stroke-width: 2; rx: 12; }
+    </style>
+  </defs>
+
+  <rect width="1500" height="820" fill="#ffffff"/>
+
+  <text class="section" x="55" y="49">INPUT IMAGE</text>
+  <text class="section" x="390" y="49">TEXT INITIALIZATION</text>
+
+  <rect class="box" x="55" y="74" width="260" height="110"/>
+  <text class="body" text-anchor="middle" x="185" y="120">Camera-trap</text>
+  <text class="body" text-anchor="middle" x="185" y="151">image</text>
+
+  <rect class="box" x="390" y="74" width="260" height="110"/>
+  <text class="body" text-anchor="middle" x="520" y="120">181 WILDS animal</text>
+  <text class="body" text-anchor="middle" x="520" y="151">class names</text>
+
+  <rect class="frozen" x="705" y="74" width="310" height="110"/>
+  <text class="body" text-anchor="middle" x="860" y="115">CLIP text encoder</text>
+  <text class="small" text-anchor="middle" x="860" y="151">frozen; used for initialization</text>
+
+  <rect class="trainable" x="1070" y="74" width="375" height="110"/>
+  <text class="body" text-anchor="middle" x="1257" y="115">181 class vectors</text>
+  <text class="small" text-anchor="middle" x="1257" y="151">trainable; 512 dimensions each</text>
+
+  <path class="path" d="M 650 129 H 700"/>
+  <path class="path" d="M 1015 129 H 1065"/>
+
+  <rect class="frozen" x="55" y="255" width="1390" height="215"/>
+  <text class="section" x="83" y="291">PRETRAINED YOLO-WORLD S-v2 DETECTOR · FROZEN</text>
+
+  <rect class="box" x="88" y="323" width="330" height="113"/>
+  <text class="body" text-anchor="middle" x="253" y="368">Image backbone</text>
+  <text class="small" text-anchor="middle" x="253" y="403">multi-scale visual features</text>
+
+  <rect class="box" x="496" y="323" width="330" height="113"/>
+  <text class="body" text-anchor="middle" x="661" y="368">Vision–language fusion</text>
+  <text class="small" text-anchor="middle" x="661" y="403">localized visual features</text>
+
+  <rect class="box" x="904" y="323" width="507" height="113"/>
+  <text class="body" text-anchor="middle" x="1157" y="368">Region–text matching + box head</text>
+  <text class="small" text-anchor="middle" x="1157" y="403">candidate boxes and per-class scores</text>
+
+  <path class="path" d="M 185 184 V 316"/>
+  <path class="path" d="M 418 379 H 489"/>
+  <path class="path" d="M 826 379 H 897"/>
+  <path d="M 1257 184 V 215 H 1157 V 316" fill="none" stroke="#a55b12" stroke-width="3" marker-end="url(#orange-arrow)"/>
+
+  <text class="section" x="55" y="520">TRAINING · IMAGE LABELS ONLY</text>
+  <text class="section" x="790" y="520">INFERENCE · ONE IMAGE PREDICTION</text>
+
+  <path class="path" d="M 1098 436 V 478 H 25 V 613 H 49"/>
+  <path class="path" d="M 1240 436 V 489 H 760 V 613 H 784"/>
+
+  <rect class="training" x="55" y="553" width="290" height="120"/>
+  <text class="body" text-anchor="middle" x="200" y="601">Max pre-NMS score</text>
+  <text class="small" text-anchor="middle" x="200" y="634">per animal class</text>
+
+  <rect class="training" x="390" y="553" width="290" height="120"/>
+  <text class="body" text-anchor="middle" x="535" y="601">Add empty logit = 0</text>
+  <text class="small" text-anchor="middle" x="535" y="634">182 image-level scores</text>
+
+  <path class="path" d="M 345 613 H 384"/>
+  <path class="path" d="M 535 673 V 690"/>
+  <rect class="training" x="55" y="697" width="625" height="87"/>
+  <text class="body" x="74" y="735">Cross-entropy against WILDS image label</text>
+  <text class="small" x="74" y="766">Gradient updates class vectors only; no box targets</text>
+
+  <rect class="inference" x="790" y="553" width="235" height="120"/>
+  <text class="body" text-anchor="middle" x="907" y="601">NMS</text>
+  <text class="small" text-anchor="middle" x="907" y="634">remove duplicate boxes</text>
+
+  <rect class="inference" x="1060" y="553" width="195" height="120"/>
+  <text class="body" text-anchor="middle" x="1157" y="601">Top detection</text>
+  <text class="small" text-anchor="middle" x="1157" y="634">highest score</text>
+
+  <rect class="inference" x="1290" y="553" width="155" height="120"/>
+  <text class="body" text-anchor="middle" x="1367" y="601">Threshold</text>
+  <text class="small" text-anchor="middle" x="1367" y="634">animal / empty</text>
+
+  <path class="path" d="M 1025 613 H 1054"/>
+  <path class="path" d="M 1255 613 H 1284"/>
+  <text class="small" x="803" y="724">Threshold selected on held-out-camera validation.</text>
+</svg>

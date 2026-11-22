@@ -1,0 +1,74 @@
+% Editable vector schematic. Coordinates in cm; all dimensions omit batch size.
+\begingroup
+\definecolor{vitblue}{RGB}{48,80,111}
+\definecolor{vitfill}{RGB}{242,246,250}
+\definecolor{vitgreen}{RGB}{65,103,80}
+\definecolor{vitgray}{RGB}{87,97,109}
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  x=1cm,y=1cm,
+  font=\sffamily\fontsize{8.5}{10}\selectfont,
+  box/.style={draw=vitblue,line width=.65pt,fill=vitfill,
+    align=center,minimum height=.85cm,inner sep=3pt},
+  planned/.style={box,dashed,fill=white},
+  flow/.style={-{Latex[length=1.5mm,width=1mm]},draw=vitgray,line width=.6pt},
+  note/.style={align=center,font=\sffamily\fontsize{7.5}{9}\selectfont,text=vitgray},
+  heading/.style={anchor=west,font=\sffamily\bfseries\fontsize{9}{11}\selectfont},
+  add/.style={circle,draw=vitgray,fill=white,inner sep=0pt,minimum size=.36cm}]
+
+\node[heading] at (0,.88) {(a) Implemented classifier: CLIP ViT-B/16};
+\node[box,minimum width=1.25cm] (image) at (.7,0) {RGB\\image};
+\node[box,minimum width=2.1cm] (patch) at (2.7,0) {Patch\\projection};
+\node[box,minimum width=2.2cm] (embed) at (5.1,0) {CLS + positions\\+ LayerNorm};
+\node[box,minimum width=2.15cm] (encoder) at (7.55,0) {Transformer\\encoder $\times 12$};
+\node[box,minimum width=2.1cm] (proj) at (10,0) {CLS $\to$ norm\\$\to$ projection};
+\node[box,minimum width=2.5cm,draw=vitgreen,fill=vitgreen!5] (head) at (12.8,0)
+  {L2 normalize\\+ linear head};
+\foreach \a/\b in {image/patch,patch/embed,embed/encoder,encoder/proj,proj/head}
+  \draw[flow] (\a.east) -- (\b.west);
+\node[note] at (.7,-.78) {$224\times224\times3$};
+\node[note] at (2.7,-.78) {196 patches\\$16\times16$ pixels};
+\node[note] at (5.1,-.78) {197 tokens\\768 features each};
+\node[note] at (7.55,-.78) {Sequence shape\\$197\times768$};
+\node[note] at (10,-.78) {Image vector\\512 features};
+\node[note] at (12.8,-.78) {182 class scores\\$\to$ prediction};
+
+\node[heading] at (0,-1.47) {(b) Inside each transformer encoder block};
+\node[box,minimum width=1.65cm] (ln1) at (1.45,-2.45) {LayerNorm};
+\node[box,minimum width=2.4cm] (attn) at (4.0,-2.45) {Self-attention\\12 heads $\times$ 64};
+\node[add] (sum1) at (5.9,-2.45) {$+$};
+\node[box,minimum width=1.65cm] (ln2) at (7.5,-2.45) {LayerNorm};
+\node[box,minimum width=2.7cm] (mlp) at (10.15,-2.45) {MLP + activation\\$768\to3072\to768$};
+\node[add] (sum2) at (12.2,-2.45) {$+$};
+\coordinate (in) at (.1,-2.45);
+\coordinate (r1) at (.35,-2.45);
+\coordinate (r2) at (6.3,-2.45);
+\draw[flow] (in) -- (ln1.west);
+\draw[flow] (ln1.east) -- (attn.west);
+\draw[flow] (attn.east) -- (sum1.west);
+\draw[flow] (sum1.east) -- (ln2.west);
+\draw[flow] (ln2.east) -- (mlp.west);
+\draw[flow] (mlp.east) -- (sum2.west);
+\draw[flow] (sum2.east) -- (14.05,-2.45);
+\draw[flow] (r1) -- (.35,-1.87) -- (5.9,-1.87) -- (sum1.north);
+\draw[flow] (r2) -- (6.3,-1.87) -- (12.2,-1.87) -- (sum2.north);
+\node[note,fill=white,inner sep=1pt] at (3.12,-1.87) {Residual path};
+\node[note,fill=white,inner sep=1pt] at (9.25,-1.87) {Residual path};
+\node[note] at (7,-3.12) {Token sequence remains $197\times768$ throughout the encoder};
+
+\node[heading] at (0,-3.64) {(c) Proposed primary study: fixed classifier, learned reliability};
+\node[planned,minimum width=2.7cm] (fixed) at (1.45,-4.37)
+  {A-trained FLYP\\freeze classifier};
+\node[planned,minimum width=3.3cm] (signals) at (5.15,-4.37)
+  {Output + feature evidence\\bank from B memory};
+\node[planned,minimum width=2.8cm] (gate) at (9,-4.37)
+  {Logistic selector\\fit on B gate};
+\node[planned,minimum width=2.6cm] (decision) at (12.75,-4.37)
+  {Accept prediction\\or defer for review};
+\foreach \a/\b in {fixed/signals,signals/gate,gate/decision}
+  \draw[flow,dashed] (\a.east) -- (\b.west);
+\node[note] at (7.05,-5.06)
+  {Compression follows the primary study; optional correction has a separate benefit and cost evaluation.};
+\end{tikzpicture}%
+}
+\endgroup
