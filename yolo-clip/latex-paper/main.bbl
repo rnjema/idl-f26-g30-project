@@ -1,0 +1,90 @@
+\begin{thebibliography}{11}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Beery et~al.(2020)Beery, Cole, and Gjoka]{beery2020iwildcam}
+Sara Beery, Elijah Cole, and Arvi Gjoka.
+\newblock The {iWildCam} 2020 competition dataset, 2020.
+\newblock URL \url{https://arxiv.org/abs/2004.10340}.
+
+\bibitem[Cheng et~al.(2024)Cheng, Song, Ge, Liu, Wang, and
+  Shan]{cheng2024yoloworld}
+Tianheng Cheng, Lin Song, Yixiao Ge, Wenyu Liu, Xinggang Wang, and Ying Shan.
+\newblock {YOLO-World}: Real-time open-vocabulary object detection.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision
+  and Pattern Recognition}, pages 16901--16911, 2024.
+\newblock URL
+  \url{https://openaccess.thecvf.com/content/CVPR2024/html/Cheng_YOLO-World_Real-Time_Open-Vocabulary_Object_Detection_CVPR_2024_paper.html}.
+
+\bibitem[Choi et~al.(2024)Choi, Lee, Chen, Zhou, Raghunathan, and
+  Finn]{choi2024autoft}
+Caroline Choi, Yoonho Lee, Annie Chen, Allan Zhou, Aditi Raghunathan, and
+  Chelsea Finn.
+\newblock {AutoFT}: Learning an objective for robust fine-tuning, 2024.
+\newblock URL \url{https://arxiv.org/abs/2401.10220}.
+
+\bibitem[Fang et~al.(2023)Fang, Jose, Jain, Schmidt, Toshev, and
+  Shankar]{fang2023dfn}
+Alex Fang, Albin~Madappally Jose, Amit Jain, Ludwig Schmidt, Alexander Toshev,
+  and Vaishaal Shankar.
+\newblock Data filtering networks, 2023.
+\newblock URL \url{https://arxiv.org/abs/2309.17425}.
+
+\bibitem[Goyal et~al.(2023)Goyal, Kumar, Garg, Kolter, and
+  Raghunathan]{goyal2023flyp}
+Sachin Goyal, Ananya Kumar, Sankalp Garg, Zico Kolter, and Aditi Raghunathan.
+\newblock Finetune like you pretrain: Improved finetuning of zero-shot vision
+  models.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision
+  and Pattern Recognition}, pages 19338--19347, 2023.
+\newblock URL \url{https://arxiv.org/abs/2212.00638}.
+
+\bibitem[He et~al.(2015)He, Zhang, Ren, and Sun]{he2015resnet}
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+\newblock Deep residual learning for image recognition, 2015.
+\newblock URL \url{https://arxiv.org/abs/1512.03385}.
+
+\bibitem[Hu et~al.(2026)Hu, Chen, Xu, Zhang, Yue, Pi, Chen, and
+  Lin]{hu2026yolip}
+Ruiheng Hu, Yiwei Chen, Kejia Xu, Leyan Zhang, Chengyang Yue, Hao Pi, Xuhua
+  Chen, and Xiaoyong Lin.
+\newblock {YOLIP}: An enhanced framework for {UAV}-assisted wildlife monitoring
+  based on {YOLO} integrated with the {CLIP} model.
+\newblock \emph{Sensors}, 26\penalty0 (11):\penalty0 3436, 2026.
+\newblock \doi{10.3390/s26113436}.
+\newblock URL \url{https://www.mdpi.com/1424-8220/26/11/3436}.
+
+\bibitem[Koh et~al.(2021)Koh, Sagawa, Marklund, et~al.]{pmlr-v139-koh21a}
+Pang~Wei Koh, Shiori Sagawa, Henrik Marklund, et~al.
+\newblock {WILDS}: A benchmark of in-the-wild distribution shifts.
+\newblock In \emph{Proceedings of the 38th International Conference on Machine
+  Learning}, volume 139, pages 5637--5664. PMLR, 2021.
+\newblock URL \url{https://proceedings.mlr.press/v139/koh21a.html}.
+
+\bibitem[Qi et~al.(2023)Qi, Xu, Jin, Yin, and Yang]{qi2023absgd}
+Qi~Qi, Yi~Xu, Rong Jin, Wotao Yin, and Tianbao Yang.
+\newblock Attentional-biased stochastic gradient descent.
+\newblock \emph{Transactions on Machine Learning Research}, 2023.
+\newblock URL \url{https://arxiv.org/abs/2012.06951}.
+
+\bibitem[Radford et~al.(2021)Radford, Kim, Hallacy,
+  et~al.]{radford2021learning}
+Alec Radford, Jong~Wook Kim, Chris Hallacy, et~al.
+\newblock Learning transferable visual models from natural language
+  supervision.
+\newblock In \emph{Proceedings of the 38th International Conference on Machine
+  Learning}, volume 139, pages 8748--8763. PMLR, 2021.
+\newblock URL \url{https://proceedings.mlr.press/v139/radford21a.html}.
+
+\bibitem[Wortsman et~al.(2022)Wortsman, Ilharco, Kim,
+  et~al.]{wortsman2022wiseft}
+Mitchell Wortsman, Gabriel Ilharco, Jong~Wook Kim, et~al.
+\newblock Robust fine-tuning of zero-shot models.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision
+  and Pattern Recognition}, pages 7959--7971, 2022.
+\newblock URL \url{https://arxiv.org/abs/2109.01903}.
+
+\end{thebibliography}

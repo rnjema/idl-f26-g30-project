@@ -1,0 +1,65 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{beery2020iwildcam,pmlr-v139-koh21a}
+\citation{pmlr-v139-koh21a}
+\citation{qi2023absgd}
+\citation{goyal2023flyp}
+\citation{choi2024autoft}
+\citation{wortsman2022wiseft}
+\citation{fang2023dfn}
+\citation{cheng2024yoloworld}
+\citation{radford2021learning}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{beery2020iwildcam,pmlr-v139-koh21a}
+\citation{qi2023absgd}
+\citation{radford2021learning}
+\citation{goyal2023flyp,choi2024autoft}
+\citation{wortsman2022wiseft,fang2023dfn}
+\citation{hu2026yolip}
+\citation{cheng2024yoloworld}
+\citation{beery2020iwildcam,pmlr-v139-koh21a}
+\citation{cheng2024yoloworld}
+\citation{radford2021learning}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Review of related literature}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Methodology}{2}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Dataset and task}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Model and image-level objective}{2}{subsection.3.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces YOLO-CLIP image-level adaptation. Class-name embeddings from a frozen CLIP text encoder initialize 181 trainable vectors; the YOLO-World detector remains frozen. Non-maximum suppression (NMS) removes redundant overlapping detections. Training pools the maximum region score for each animal class before NMS, appends a fixed \texttt  {empty} logit, and applies image-level cross-entropy. Inference selects the highest-scoring detection after NMS, or \texttt  {empty} below a validation-selected threshold. No bounding-box labels or separate CLIP crop classifier are used.}}{3}{figure.1}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{3}{YOLO-CLIP image-level adaptation. Class-name embeddings from a frozen CLIP text encoder initialize 181 trainable vectors; the YOLO-World detector remains frozen. Non-maximum suppression (NMS) removes redundant overlapping detections. Training pools the maximum region score for each animal class before NMS, appends a fixed \texttt {empty} logit, and applies image-level cross-entropy. Inference selects the highest-scoring detection after NMS, or \texttt {empty} below a validation-selected threshold. No bounding-box labels or separate CLIP crop classifier are used}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Training and model selection}{3}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Inference and evaluation}{3}{subsection.3.4}\protected@file@percent }
+\citation{radford2021learning}
+\citation{he2015resnet,qi2023absgd,goyal2023flyp,choi2024autoft}
+\citation{wortsman2022wiseft,fang2023dfn}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Baseline Experiments}{4}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Classifier baselines}{4}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Frozen detector reference}{4}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Initial Results and Findings}{4}{section.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Image-level macro-F1 (\%). ID and OOD denote familiar and unseen camera locations. The fixed-norm ResNet result is a three-seed mean; the other trained classifier results are single runs. The YOLO-CLIP checkpoint was selected on IDVal cross-entropy. Asterisks mark OODVal scores used to select each detector's \texttt  {empty} threshold, so they are tuning scores rather than independent evaluations. Dashes denote unmeasured splits.}}{4}{table.1}\protected@file@percent }
+\newlabel{tab:baselines}{{1}{4}{Image-level macro-F1 (\%). ID and OOD denote familiar and unseen camera locations. The fixed-norm ResNet result is a three-seed mean; the other trained classifier results are single runs. The YOLO-CLIP checkpoint was selected on IDVal cross-entropy. Asterisks mark OODVal scores used to select each detector's \texttt {empty} threshold, so they are tuning scores rather than independent evaluations. Dashes denote unmeasured splits}{table.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Classifier baselines.}{4}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{YOLO-CLIP training and validation.}{4}{section*.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces YOLO-CLIP image-level cross-entropy over 20 epochs. Training loss declines throughout, while familiar-camera validation (\texttt  {id\_val}) loss is lowest at epoch 9 (1.4783), the checkpoint selected before threshold tuning. No held-out-camera validation or test data enter these curves.}}{5}{figure.2}\protected@file@percent }
+\newlabel{fig:training}{{2}{5}{YOLO-CLIP image-level cross-entropy over 20 epochs. Training loss declines throughout, while familiar-camera validation (\texttt {id\_val}) loss is lowest at epoch 9 (1.4783), the checkpoint selected before threshold tuning. No held-out-camera validation or test data enter these curves}{figure.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Final test results.}{5}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Observed failure patterns.}{5}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Discussion}{5}{section.6}\protected@file@percent }
+\citation{hu2026yolip}
+\bibstyle{plainnat}
+\bibdata{references}
+\bibcite{beery2020iwildcam}{{1}{2020}{{Beery et~al.}}{{Beery, Cole, and Gjoka}}}
+\bibcite{cheng2024yoloworld}{{2}{2024}{{Cheng et~al.}}{{Cheng, Song, Ge, Liu, Wang, and Shan}}}
+\bibcite{choi2024autoft}{{3}{2024}{{Choi et~al.}}{{Choi, Lee, Chen, Zhou, Raghunathan, and Finn}}}
+\bibcite{fang2023dfn}{{4}{2023}{{Fang et~al.}}{{Fang, Jose, Jain, Schmidt, Toshev, and Shankar}}}
+\bibcite{goyal2023flyp}{{5}{2023}{{Goyal et~al.}}{{Goyal, Kumar, Garg, Kolter, and Raghunathan}}}
+\bibcite{he2015resnet}{{6}{2015}{{He et~al.}}{{He, Zhang, Ren, and Sun}}}
+\bibcite{hu2026yolip}{{7}{2026}{{Hu et~al.}}{{Hu, Chen, Xu, Zhang, Yue, Pi, Chen, and Lin}}}
+\bibcite{pmlr-v139-koh21a}{{8}{2021}{{Koh et~al.}}{{Koh, Sagawa, Marklund, et~al.}}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Planned Work}{6}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Team contributions.}{6}{section*.5}\protected@file@percent }
+\bibcite{qi2023absgd}{{9}{2023}{{Qi et~al.}}{{Qi, Xu, Jin, Yin, and Yang}}}
+\bibcite{radford2021learning}{{10}{2021}{{Radford et~al.}}{{Radford, Kim, Hallacy, et~al.}}}
+\bibcite{wortsman2022wiseft}{{11}{2022}{{Wortsman et~al.}}{{Wortsman, Ilharco, Kim, et~al.}}}
+\gdef \@abspage@last{7}
